@@ -1,0 +1,96 @@
+
+layout(origin_upper_left) in vec4 gl_FragCoord;
+
+in flat s_transform v_t;
+in flat vec3 v_color;
+in vec2 v_uv;
+in vec2 v_local_uv;
+
+out vec4 out_color;
+
+uniform vec2 window_size;
+uniform float time;
+
+layout (location = 0) uniform sampler2D in_texture;
+layout (location = 1) uniform sampler2D noise;
+
+vec2 n22(vec2 p)
+{
+	vec3 a = fract(p.xyx * vec3(123.34, 234.34, 345.65));
+	a += dot(a, a + 34.45);
+	return fract(vec2(a.x * a.y, a.y * a.z));
+}
+
+float sin2(float s)
+{
+	return sin(s) * 0.5 + 0.5;
+}
+
+vec4 pma(vec4 col)
+{
+	return vec4(col.rgb * col.a, col.a);
+}
+
+bool point_in_rect_topleft(vec2 point, vec2 pos, vec2 size)
+{
+	return point.x >= pos.x && point.x <= pos.x + size.x && point.y >= pos.y && point.y <= pos.y + size.y;
+}
+
+vec3 circle(vec2 pos, vec2 uv, float radius)
+{
+	vec2 ar = vec2(1.0, window_size.y / window_size.x);
+	pos *= ar;
+	uv *= ar;
+	float d = distance(pos, uv);
+	d = smoothstep(radius, 0.0, d);
+	// return vec3(d * 0.1, d * 0.4, d);
+	return vec3(d);
+}
+
+void main()
+{
+	s_transform t = v_t;
+
+	if(t.do_clip != 0)
+	{
+		// vec2 pos = t.pos + t.draw_size * v_local_uv;
+		if(!point_in_rect_topleft(gl_FragCoord.xy, t.clip_pos, t.clip_size)) { discard; }
+	}
+
+	vec4 color;
+	if(t.texture_id != 0)
+	{
+		color = texture(in_texture, v_uv) * t.color;
+		color.rgb = mix(color.rgb, t.mix_color.rgb, t.mix_weight);
+	}
+	else
+	{
+		color = t.color;
+		color.rgb = mix(color.rgb, t.mix_color.rgb, t.mix_weight);
+	}
+
+	if(t.do_circle != 0)
+	{
+		float d = distance(v_local_uv, vec2(0.5));
+		color.a *= smoothstep(0.499, 0.3, d);
+	}
+	if(t.do_noise != 0)
+	{
+		float d = distance(v_local_uv, vec2(0.5));
+		float n = texture(noise, v_local_uv * 0.35 * d + time * 0.1).r;
+		// n -= 0.4;
+		// n = max(0.0, n);
+		// n = pow(n, 0.25);
+		n = smoothstep(0.4, 0.8, n);
+		n = pow(n, smoothstep(0.2, 0.3, d));
+
+
+		color.rgb *= n;
+	}
+	color = pma(color);
+
+	if(color.a <= 0) { discard; }
+
+	out_color = color;
+}
+

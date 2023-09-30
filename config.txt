@@ -1,0 +1,4 @@
+name=Tkap1
+ip=at-taxation.at.ply.gg
+port=62555
+color=38adf7
