@@ -2,8 +2,10 @@
 enum e_sprite
 {
 	e_sprite_player,
-	e_sprite_dirt,
 	e_sprite_grass,
+	e_sprite_dirt,
+	e_sprite_stone,
+	e_sprite_clay,
 	e_sprite_damage_0,
 	e_sprite_damage_1,
 	e_sprite_damage_2,
@@ -147,6 +149,8 @@ struct s_player : s_entity
 {
 	b8 jumping;
 	int jumps_done;
+	int level;
+	int exp;
 	int damage_taken;
 	float dig_timer;
 	s_v2 vel;
@@ -158,9 +162,58 @@ struct s_sprite_data
 	s_v2i size;
 };
 
+enum e_tile
+{
+	e_tile_grass,
+	e_tile_dirt,
+	e_tile_stone,
+	e_tile_clay,
+	e_tile_count,
+};
+
+struct s_tile_data
+{
+	s64 weight;
+	s64 weight_add;
+	int exp;
+	int sprite;
+	int health;
+};
+
+global constexpr s_tile_data g_tile_data[] = {
+	{
+		.weight = 1000,
+		.weight_add = -2,
+		.exp = 1,
+		.sprite = e_sprite_grass,
+		.health = 3,
+	},
+	{
+		.weight = 900,
+		.weight_add = -1,
+		.exp = 2,
+		.sprite = e_sprite_dirt,
+		.health = 4,
+	},
+	{
+		.weight = 5,
+		.weight_add = 20,
+		.exp = 3,
+		.sprite = e_sprite_stone,
+		.health = 5,
+	},
+	{
+		.weight = 4,
+		.weight_add = 20,
+		.exp = 4,
+		.sprite = e_sprite_clay,
+		.health = 6,
+	},
+};
+
 struct s_tile
 {
-	int sprite_index;
+	int type;
 	int damage_taken;
 };
 
@@ -202,10 +255,12 @@ struct s_tile_collision
 struct s_game_transient
 {
 	b8 in_upgrade_menu;
-	int current_depth_index;
 	int upgrade_index;
 	s_sarray<int, 3> upgrade_choices;
 	int upgrades_chosen[e_upgrade_count];
+	s_player player;
+	float kill_area_timer;
+	int upgrades_queued;
 };
 
 struct s_game
@@ -232,14 +287,12 @@ struct s_game
 	int frame_count;
 	float total_time;
 	float kill_area_bottom;
-	float kill_area_timer;
 	s_v2 title_pos;
 	s_v3 title_color;
 	f64 update_timer;
 	s_rng rng;
 	e_state state;
 	s_font font_arr[e_font_count];
-	s_player player;
 	s_camera camera;
 
 	s_sarray<s_particle, 16384> particles;
@@ -304,6 +357,11 @@ func char* get_upgrade_description(int id, int level);
 func float get_upgrade_value(int id, int level);
 func float get_movement_speed();
 func int get_max_health();
+func s64* get_tile_weights_for_y(int y, int count);
+func int pick_from_weights(s64* weights, int count);
+func void add_exp(int exp);
+func int get_required_exp_to_level_up(int level);
+func void add_upgrade_to_queue();
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

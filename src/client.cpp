@@ -141,6 +141,12 @@ m_update_game(update_game)
 		game->sprite_data[e_sprite_grass].pos = v2i(0, 16);
 		game->sprite_data[e_sprite_grass].size = v2i(16, 16);
 
+		game->sprite_data[e_sprite_stone].pos = v2i(16, 32);
+		game->sprite_data[e_sprite_stone].size = v2i(16, 16);
+
+		game->sprite_data[e_sprite_clay].pos = v2i(16, 48);
+		game->sprite_data[e_sprite_clay].size = v2i(16, 16);
+
 		game->sprite_data[e_sprite_damage_0].pos = v2i(0, 32);
 		game->sprite_data[e_sprite_damage_0].size = v2i(16, 16);
 
@@ -191,7 +197,7 @@ m_update_game(update_game)
 	{
 		game->update_timer -= c_update_delay;
 
-		game->player.prev_pos = game->player.pos;
+		game->transient.player.prev_pos = game->transient.player.pos;
 		game->camera.prev_center = game->camera.center;
 		update();
 
@@ -261,7 +267,7 @@ func void update()
 
 			if(is_key_pressed(g_logic_input, c_key_f3))
 			{
-				trigger_upgrade_menu();
+				add_upgrade_to_queue();
 			}
 
 			if(game->in_debug_menu)
@@ -292,11 +298,11 @@ func void update()
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		reset game end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 			game->kill_area_bottom += delta * 80;
-			game->kill_area_timer = at_most(c_kill_area_delay + delta, game->kill_area_timer + delta);
+			game->transient.kill_area_timer = at_most(c_kill_area_delay + delta, game->transient.kill_area_timer + delta);
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			{
-				s_player* player = &game->player;
+				s_player* player = &game->transient.player;
 
 				float x_dir = 0;
 				if(is_key_down(g_logic_input, c_key_a))
@@ -382,31 +388,27 @@ func void update()
 					while(player->dig_timer >= dig_delay)
 					{
 						s_v2i hovered = get_hovered_tile(game->camera);
-						if(!is_valid_tile_index(hovered) && !game->tiles_active[hovered.y][hovered.x]) { break; }
+						if(!is_valid_tile_index(hovered) || !game->tiles_active[hovered.y][hovered.x]) { break; }
+						s_tile tile = game->tiles[hovered.y][hovered.x];
 						s_v2 tile_center = tile_index_to_tile_center(hovered);
 						float dist = v2_distance(player->pos, tile_center);
 						if(dist > get_dig_range()) { break; }
 
 						player->dig_timer -= dig_delay;
 						game->tiles[hovered.y][hovered.x].damage_taken += 1;
-						if(game->tiles[hovered.y][hovered.x].damage_taken >= 4)
+						if(game->tiles[hovered.y][hovered.x].damage_taken >= g_tile_data[tile.type].health)
 						{
+							add_exp(g_tile_data[tile.type].exp);
 							game->tiles_active[hovered.y][hovered.x] = false;
 						}
 					}
 				}
 
-				if(player->y >= c_depth_goals[game->transient.current_depth_index])
-				{
-					game->transient.current_depth_index += 1;
-					trigger_upgrade_menu();
-				}
-
 				if(player->y < game->kill_area_bottom)
 				{
-					if(game->kill_area_timer >= c_kill_area_delay)
+					if(game->transient.kill_area_timer >= c_kill_area_delay)
 					{
-						game->kill_area_timer -= c_kill_area_delay;
+						game->transient.kill_area_timer -= c_kill_area_delay;
 						player->damage_taken += 1;
 						if(player->damage_taken >= get_max_health())
 						{
@@ -481,7 +483,7 @@ func void render(float dt)
 			s_bounds cam_bounds = get_camera_bounds(interpolated_camera);
 
 			{
-				s_v2 pos = lerp(game->player.prev_pos, game->player.pos, dt);
+				s_v2 pos = lerp(game->transient.player.prev_pos, game->transient.player.pos, dt);
 				draw_texture(pos, e_layer_player, c_player_size, v4(1,1,1,1), game->sprite_data[e_sprite_player], true, dt);
 			}
 
@@ -516,15 +518,20 @@ func void render(float dt)
 						mix_weight = 0.5f;
 					}
 					draw_texture(
-						v2(x * c_tile_size, y * c_tile_size), e_layer_tiles, v2(c_tile_size), v4(1,1,1,1), game->sprite_data[tile.sprite_index],
+						v2(x * c_tile_size, y * c_tile_size), e_layer_tiles, v2(c_tile_size), v4(1,1,1,1),
+						game->sprite_data[g_tile_data[tile.type].sprite],
 						true, dt, {.mix_weight = mix_weight, .origin_offset = c_origin_topleft, .mix_color = mix_color}
 					);
 
 					if(tile.damage_taken > 0)
 					{
+						int damage_sprite = e_sprite_damage_0;
+						float damage_percent = tile.damage_taken / (float)g_tile_data[tile.type].health;
+						if(damage_percent >= 0.66f) { damage_sprite = e_sprite_damage_2; }
+						else if(damage_percent >= 0.33f) { damage_sprite = e_sprite_damage_1; }
 						draw_texture(
 							v2(x * c_tile_size, y * c_tile_size), e_layer_tiles_decal, v2(c_tile_size), v4(1,1,1,1),
-							game->sprite_data[e_sprite_damage_0 + (tile.damage_taken - 1)],
+							game->sprite_data[damage_sprite],
 							true, dt, {.mix_weight = mix_weight, .origin_offset = c_origin_topleft, .mix_color = mix_color}
 						);
 					}
@@ -554,6 +561,7 @@ func void render(float dt)
 					}
 
 					int selected = game->transient.upgrade_index;
+					b8 upgrade_hovered = false;
 					{
 						s_v2 pos = base_pos;
 						for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
@@ -568,6 +576,7 @@ func void render(float dt)
 							{
 								game->transient.upgrade_index = upgrade_i;
 								selected = upgrade_i;
+								upgrade_hovered = true;
 								break;
 							}
 							pos.y += spacing;
@@ -596,7 +605,10 @@ func void render(float dt)
 						}
 					}
 
-					if(is_key_pressed(g_input, c_key_enter))
+					if(
+						is_key_pressed(g_input, c_key_enter) ||
+						(upgrade_hovered && is_key_pressed(g_input, c_left_mouse))
+					)
 					{
 						apply_upgrade(game->transient.upgrade_choices[selected]);
 					}
@@ -1025,28 +1037,29 @@ func void play_delayed_sound(s_sound sound, float delay)
 func void reset_level()
 {
 	s_rng* rng = &game->rng;
+	memset(&game->transient, 0, sizeof(game->transient));
 	memset(game->tiles_active, true, sizeof(game->tiles_active));
 	for(int y = 0; y < c_tiles_down; y++)
 	{
+		s64* weights = get_tile_weights_for_y(y, e_tile_count);
 		for(int x = 0; x < c_tiles_right; x++)
 		{
 			game->tiles[y][x] = zero;
-			game->tiles[y][x].sprite_index = rng->rand_range_ii(e_sprite_dirt, e_sprite_grass);
+			game->tiles[y][x].type = pick_from_weights(weights, e_tile_count);
 			if(rng->chance100(10))
 			{
 				game->tiles_active[y][x] = false;
 			}
 		}
 	}
-	game->player = zero;
-	game->player.pos.x = c_tile_size * c_tiles_right / 2;
-	game->player.pos.y = -500;
-	game->player.prev_pos = game->player.pos;
-	game->camera.center = game->player.pos;
+	s_player* player = &game->transient.player;
+	player->pos.x = c_tile_size * c_tiles_right / 2;
+	player->pos.y = -500;
+	player->prev_pos = player->pos;
+	player->level = 1;
+	game->camera.center = player->pos;
 	game->camera.prev_center = game->camera.center;
 	game->kill_area_bottom = -900;
-	game->kill_area_timer = 0;
-	memset(&game->transient, 0, sizeof(game->transient));
 }
 
 func s_bounds get_camera_bounds(s_camera camera)
@@ -1189,7 +1202,6 @@ func int get_max_health()
 	return result;
 }
 
-
 func b8** get_debug_vars()
 {
 	b8** result = (b8**)la_get(g_platform_data->frame_arena, array_count(debug_text) * sizeof(b8*));
@@ -1208,6 +1220,15 @@ func int get_max_jumps()
 		result += (int)get_upgrade_value(e_upgrade_extra_jump, i);
 	}
 	return result;
+}
+
+func void add_upgrade_to_queue()
+{
+	game->transient.upgrades_queued += 1;
+	if(game->transient.upgrades_queued == 1)
+	{
+		trigger_upgrade_menu();
+	}
 }
 
 func void trigger_upgrade_menu()
@@ -1241,6 +1262,12 @@ func void apply_upgrade(int index)
 {
 	game->transient.upgrades_chosen[index] += 1;
 	game->transient.in_upgrade_menu = false;
+
+	game->transient.upgrades_queued -= 1;
+	if(game->transient.upgrades_queued > 0)
+	{
+		trigger_upgrade_menu();
+	}
 }
 
 func char* get_upgrade_description(int id, int level)
@@ -1307,3 +1334,53 @@ func float get_upgrade_value(int id, int level)
 	return 0;
 }
 
+func s64* get_tile_weights_for_y(int y, int count)
+{
+	s64* weights = (s64*)la_get(g_platform_data->frame_arena, sizeof(s64) * count);
+	for(int tile_i = 0; tile_i < count; tile_i++)
+	{
+		s64 weight = at_least((s64)0, g_tile_data[tile_i].weight + g_tile_data[tile_i].weight_add * y);
+		weights[tile_i] = weight;
+	}
+	return weights;
+}
+
+func int pick_from_weights(s64* weights, int count)
+{
+	s64 total = 0;
+	for(int i = 0; i < count; i++)
+	{
+		s64 weight = weights[i];
+		total += weight;
+	}
+	for(int i = 0; i < count; i++)
+	{
+		s64 weight = weights[i];
+		s64 rand = game->rng.randu() % total;
+		if(rand < weight) { return i; }
+		total -= weight;
+	}
+	return -1;
+}
+
+func void add_exp(int exp)
+{
+	s_player* player = &game->transient.player;
+	player->exp += exp;
+	int required_exp = get_required_exp_to_level_up(player->level);
+	while(player->exp >= required_exp)
+	{
+		player->level += 1;
+		player->exp -= required_exp;
+		required_exp = get_required_exp_to_level_up(player->level);
+		add_upgrade_to_queue();
+	}
+}
+
+func int get_required_exp_to_level_up(int level)
+{
+	float result = 10;
+	result += (level - 1) * 10;
+	result = powf(result, 1.1f);
+	return ceilfi(result);
+}
