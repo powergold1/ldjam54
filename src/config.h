@@ -35,7 +35,7 @@ global constexpr s_v2i c_resolutions[] = {
 	v2i(7680, 4320),
 };
 
-global constexpr float c_gravity = 25;
+global constexpr float c_gravity = 1500;
 global constexpr s_v2 c_player_size = v2(32 * 0.8f, 64 * 0.8f);
 global constexpr int c_tile_size = 64;
 global constexpr int c_atlas_size = 256;
@@ -44,3 +44,13 @@ global constexpr int c_tiles_down = 512;
 global constexpr float c_player_speed = 300;
 global constexpr float c_dig_delay = 0.15f;
 global constexpr float c_dig_range = 150;
+global constexpr float c_kill_area_delay = 1;
+global constexpr int c_player_health = 3;
+
+global constexpr char* debug_text[] = {
+	"High speed", "Super dig", "Player bounds", "Camera bounds",
+};
+
+global constexpr float c_depth_goals[] = {
+	1000, 2000, 3000, 4000, 6000, 80000, 10000, 15000, 20000
+};

@@ -19,6 +19,16 @@ enum e_layer
 	e_layer_kill_area,
 };
 
+enum e_upgrade
+{
+	e_upgrade_dig_speed,
+	e_upgrade_dig_range,
+	e_upgrade_movement_speed,
+	e_upgrade_health,
+	e_upgrade_extra_jump,
+	e_upgrade_count,
+};
+
 enum e_state
 {
 	e_state_main_menu,
@@ -135,8 +145,11 @@ struct s_delayed_sound
 
 struct s_player : s_entity
 {
-	s_v2 vel;
+	b8 jumping;
+	int jumps_done;
+	int damage_taken;
 	float dig_timer;
+	s_v2 vel;
 };
 
 struct s_sprite_data
@@ -186,6 +199,15 @@ struct s_tile_collision
 	s_v2 tile_center;
 };
 
+struct s_game_transient
+{
+	b8 in_upgrade_menu;
+	int current_depth_index;
+	int upgrade_index;
+	s_sarray<int, 3> upgrade_choices;
+	int upgrades_chosen[e_upgrade_count];
+};
+
 struct s_game
 {
 	b8 initialized;
@@ -193,7 +215,10 @@ struct s_game
 	b8 reset_game;
 	b8 high_speed;
 	b8 player_bounds;
+	b8 super_dig;
 	b8 camera_bounds;
+
+	s_game_transient transient;
 
 	#ifdef m_debug
 	int debug_menu_index;
@@ -207,6 +232,7 @@ struct s_game
 	int frame_count;
 	float total_time;
 	float kill_area_bottom;
+	float kill_area_timer;
 	s_v2 title_pos;
 	s_v3 title_color;
 	f64 update_timer;
@@ -248,10 +274,10 @@ func s_v2 get_text_size_with_count(const char* text, e_font font_id, int count);
 func u32 load_shader(const char* vertex_path, const char* fragment_path);
 func void handle_instant_movement_(int entity);
 func void handle_instant_resize_(int entity);
-func b8 is_key_down(int key);
-func b8 is_key_up(int key);
-func b8 is_key_pressed(int key);
-func b8 is_key_released(int key);
+func b8 is_key_down(s_input* input, int key);
+func b8 is_key_up(s_input* input, int key);
+func b8 is_key_pressed(s_input* input, int key);
+func b8 is_key_released(s_input* input, int key);
 void gl_debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 func void sine_alpha_system(int start, int count);
 func char* handle_plural(int num);
@@ -267,6 +293,17 @@ func s_v2i point_to_tile(s_v2 pos);
 func s_v2i get_hovered_tile(s_camera camera);
 func b8 is_valid_tile_index(s_v2i p);
 func s_v2 tile_index_to_tile_center(s_v2i index);
+func float get_dig_delay();
+func float get_dig_range();
+func b8** get_debug_vars();
+func int get_max_jumps();
+func void trigger_upgrade_menu();
+func b8 mouse_collides_rect_topleft(s_v2 mouse, s_v2 pos, s_v2 size);
+func void apply_upgrade(int index);
+func char* get_upgrade_description(int id, int level);
+func float get_upgrade_value(int id, int level);
+func float get_movement_speed();
+func int get_max_health();
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

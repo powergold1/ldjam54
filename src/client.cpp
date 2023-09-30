@@ -39,6 +39,7 @@ global s_sarray<s_transform, c_max_entities> text_arr[e_font_count];
 global s_lin_arena* frame_arena;
 
 global s_game_window g_window;
+global s_input* g_logic_input;
 global s_input* g_input;
 
 global s_platform_data* g_platform_data;
@@ -78,6 +79,7 @@ m_update_game(update_game)
 	g_platform_funcs = platform_funcs;
 	g_platform_data = platform_data;
 	g_input = platform_data->input;
+	g_logic_input = platform_data->logic_input;
 
 	if(!game->initialized)
 	{
@@ -158,12 +160,12 @@ m_update_game(update_game)
 	g_window.center = v2_mul(g_window.size, 0.5f);
 
 	#ifdef m_debug
-	if(is_key_pressed(c_key_f8))
+	if(is_key_pressed(g_input, c_key_f8))
 	{
 		write_file("save_state", game, sizeof(*game));
 	}
 
-	if(is_key_pressed(c_key_f9))
+	if(is_key_pressed(g_input, c_key_f9))
 	{
 		char* data = read_file("save_state", frame_arena, null);
 		if(data)
@@ -174,7 +176,7 @@ m_update_game(update_game)
 	#endif // m_debug
 
 
-	if(is_key_pressed(c_key_f2))
+	if(is_key_pressed(g_input, c_key_f2))
 	{
 		game->current_resolution_index = g_platform_funcs.cycle_between_available_resolutions(game->current_resolution_index);
 		g_platform_data->any_key_pressed = false;
@@ -184,6 +186,7 @@ m_update_game(update_game)
 
 	game->update_timer += g_platform_data->time_passed;
 	game->frame_count += 1;
+
 	while(game->update_timer >= c_update_delay)
 	{
 		game->update_timer -= c_update_delay;
@@ -194,18 +197,24 @@ m_update_game(update_game)
 
 		for(int k_i = 0; k_i < c_max_keys; k_i++)
 		{
-			g_input->keys[k_i].count = 0;
+			g_logic_input->keys[k_i].count = 0;
 		}
 		g_platform_data->any_key_pressed = false;
 	}
 
 	float interpolation_dt = (float)(game->update_timer / c_update_delay);
 	render(interpolation_dt);
+
 	// memset(game->e.drawn_last_render, true, sizeof(game->e.drawn_last_render));
 
 	game->total_time += (float)platform_data->time_passed;
 
 	frame_arena->used = 0;
+
+	for(int k_i = 0; k_i < c_max_keys; k_i++)
+	{
+		g_input->keys[k_i].count = 0;
+	}
 }
 
 #ifdef m_debug
@@ -239,27 +248,35 @@ func void update()
 		{
 			// s_rng* rng = &game->rng;
 
+			if(game->transient.in_upgrade_menu)
+			{
+				delta = 0;
+			}
+
 			#ifdef m_debug
-			if(is_key_pressed(c_key_f1))
+			if(is_key_pressed(g_logic_input, c_key_f1))
 			{
 				game->in_debug_menu = !game->in_debug_menu;
 			}
 
+			if(is_key_pressed(g_logic_input, c_key_f3))
+			{
+				trigger_upgrade_menu();
+			}
+
 			if(game->in_debug_menu)
 			{
-				b8* target_vars[] = {
-					&game->high_speed, &game->player_bounds, &game->camera_bounds,
-				};
+				b8** target_vars = get_debug_vars();
 
-				if(is_key_pressed(c_key_up))
+				if(is_key_pressed(g_logic_input, c_key_up))
 				{
-					game->debug_menu_index = circular_index(game->debug_menu_index - 1, 3);
+					game->debug_menu_index = circular_index(game->debug_menu_index - 1, array_count(debug_text));
 				}
-				if(is_key_pressed(c_key_down))
+				if(is_key_pressed(g_logic_input, c_key_down))
 				{
-					game->debug_menu_index = circular_index(game->debug_menu_index + 1, 3);
+					game->debug_menu_index = circular_index(game->debug_menu_index + 1, array_count(debug_text));
 				}
-				if(is_key_pressed(c_key_enter))
+				if(is_key_pressed(g_logic_input, c_key_enter))
 				{
 					*target_vars[game->debug_menu_index] = !*target_vars[game->debug_menu_index];
 				}
@@ -275,21 +292,22 @@ func void update()
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		reset game end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 			game->kill_area_bottom += delta * 80;
+			game->kill_area_timer = at_most(c_kill_area_delay + delta, game->kill_area_timer + delta);
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			{
 				s_player* player = &game->player;
 
 				float x_dir = 0;
-				if(is_key_down(c_key_a))
+				if(is_key_down(g_logic_input, c_key_a))
 				{
 					x_dir = -1;
 				}
-				if(is_key_down(c_key_d))
+				if(is_key_down(g_logic_input, c_key_d))
 				{
 					x_dir = 1;
 				}
-				player->x += (c_player_speed * (game->high_speed ? 5 : 1)) * x_dir * delta;
+				player->x += get_movement_speed() * x_dir * delta;
 
 				// @Note(tkap, 30/09/2023): x collision
 				{
@@ -301,13 +319,30 @@ func void update()
 				}
 
 				player->vel.y += c_gravity * delta;
-				player->vel.y = at_most(15.0f, player->vel.y);
-				if(is_key_pressed(c_key_space))
+				player->vel.y = at_most(1000.0f, player->vel.y);
+				if(player->vel.y > 0)
 				{
-					player->vel.y = c_gravity * delta * -25;
+					player->jumping = false;
 				}
 
-				player->y += player->vel.y;
+				if(player->jumping)
+				{
+					if(!is_key_down(g_logic_input, c_key_space))
+					{
+						player->jumping = false;
+						player->vel.y *= 0.5f;
+					}
+				}
+
+				b8 can_jump = player->jumps_done < get_max_jumps();
+				if(can_jump && is_key_pressed(g_logic_input, c_key_space))
+				{
+					player->jumps_done += 1;
+					player->jumping = true;
+					player->vel.y = c_gravity * -0.4f;
+				}
+
+				player->y += player->vel.y * delta;
 
 				// @Note(tkap, 30/09/2023): y collision
 				{
@@ -315,8 +350,13 @@ func void update()
 					s_tile_collision collision = get_tile_collision(player->pos, c_player_size);
 					if(collision.collided)
 					{
+						player->jumping = false;
 						player->y = collision.tile_center.y - y_dir * (c_tile_size / 2 + c_player_size.y / 2) - y_dir * 0.01f;
 						player->vel.y = 0;
+						if(y_dir == 1)
+						{
+							player->jumps_done = 0;
+						}
 					}
 				}
 
@@ -335,25 +375,42 @@ func void update()
 					game->camera.center.x = at_most(right_limit - c_half_res.x, game->camera.center.x);
 				}
 
-				player->dig_timer = at_most(c_dig_delay + delta, player->dig_timer + delta);
-				if(is_key_down(c_left_mouse))
+				float dig_delay = get_dig_delay();
+				player->dig_timer = at_most(dig_delay + delta, player->dig_timer + delta);
+				if(is_key_down(g_logic_input, c_left_mouse))
 				{
-					if(player->dig_timer >= c_dig_delay)
+					while(player->dig_timer >= dig_delay)
 					{
 						s_v2i hovered = get_hovered_tile(game->camera);
-						if(game->tiles_active[hovered.y][hovered.x])
+						if(!is_valid_tile_index(hovered) && !game->tiles_active[hovered.y][hovered.x]) { break; }
+						s_v2 tile_center = tile_index_to_tile_center(hovered);
+						float dist = v2_distance(player->pos, tile_center);
+						if(dist > get_dig_range()) { break; }
+
+						player->dig_timer -= dig_delay;
+						game->tiles[hovered.y][hovered.x].damage_taken += 1;
+						if(game->tiles[hovered.y][hovered.x].damage_taken >= 4)
 						{
-							s_v2 tile_center = tile_index_to_tile_center(hovered);
-							float dist = v2_distance(player->pos, tile_center);
-							if(dist < c_dig_range)
-							{
-								player->dig_timer -= c_dig_delay;
-								game->tiles[hovered.y][hovered.x].damage_taken += 1;
-								if(game->tiles[hovered.y][hovered.x].damage_taken >= 4)
-								{
-									game->tiles_active[hovered.y][hovered.x] = false;
-								}
-							}
+							game->tiles_active[hovered.y][hovered.x] = false;
+						}
+					}
+				}
+
+				if(player->y >= c_depth_goals[game->transient.current_depth_index])
+				{
+					game->transient.current_depth_index += 1;
+					trigger_upgrade_menu();
+				}
+
+				if(player->y < game->kill_area_bottom)
+				{
+					if(game->kill_area_timer >= c_kill_area_delay)
+					{
+						game->kill_area_timer -= c_kill_area_delay;
+						player->damage_taken += 1;
+						if(player->damage_taken >= get_max_health())
+						{
+							reset_level();
 						}
 					}
 				}
@@ -361,7 +418,7 @@ func void update()
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-			if(is_key_pressed(c_key_r))
+			if(is_key_pressed(g_logic_input, c_key_r))
 			{
 				reset_level();
 			}
@@ -434,7 +491,7 @@ func void render(float dt)
 				{
 					draw_texture(
 						pos, e_layer_kill_area, v2(c_base_res.x, game->kill_area_bottom - pos.y), v4(1,1,1,1), game->sprite_data[e_sprite_rect], true, dt,
-						{.origin_offset = c_origin_topleft}
+						{.effect_id = 1, .origin_offset = c_origin_topleft}
 					);
 				}
 			}
@@ -473,19 +530,88 @@ func void render(float dt)
 					}
 				}
 			}
+
+			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		upgrade menu start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			{
+				if(game->transient.in_upgrade_menu)
+				{
+					s_v2 base_pos = c_half_res;
+					e_font font_type = e_font_medium;
+					float spacing = game->font_arr[font_type].size * 1.2f;
+					base_pos.y -= spacing * 1.5f;
+
+					draw_texture(
+						c_half_res, 10, c_half_res, v4(0.1f,0.1f,0.1f,1), game->sprite_data[e_sprite_rect], false, dt
+					);
+
+					if(is_key_pressed(g_input, c_key_up) || is_key_pressed(g_input, c_key_w))
+					{
+						game->transient.upgrade_index = circular_index(game->transient.upgrade_index - 1, 3);
+					}
+					if(is_key_pressed(g_input, c_key_down) || is_key_pressed(g_input, c_key_s))
+					{
+						game->transient.upgrade_index = circular_index(game->transient.upgrade_index + 1, 3);
+					}
+
+					int selected = game->transient.upgrade_index;
+					{
+						s_v2 pos = base_pos;
+						for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
+						{
+							int upgrade_id = game->transient.upgrade_choices[upgrade_i];
+							int upgrade_level = game->transient.upgrades_chosen[upgrade_id];
+							char* text = get_upgrade_description(upgrade_id, upgrade_level);
+							s_v2 size = get_text_size(text, font_type);
+							s_v2 temp_pos = pos;
+							temp_pos -= size / 2;
+							if(mouse_collides_rect_topleft(g_platform_data->mouse, temp_pos, size))
+							{
+								game->transient.upgrade_index = upgrade_i;
+								selected = upgrade_i;
+								break;
+							}
+							pos.y += spacing;
+						}
+					}
+
+					{
+						s_v2 pos = base_pos;
+						for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
+						{
+							s_v4 color = rgb(0.7f, 0.7f, 0.7f);
+							int upgrade_id = game->transient.upgrade_choices[upgrade_i];
+							int upgrade_level = game->transient.upgrades_chosen[upgrade_id];
+							char* text = get_upgrade_description(upgrade_id, upgrade_level);
+							s_v2 size = get_text_size(text, font_type);
+							s_v2 temp_pos = pos;
+							temp_pos -= size / 2;
+
+							if(upgrade_i == selected)
+							{
+								color = rgb(1, 1, 0);
+							}
+
+							draw_text(text, pos, 15, color, font_type, true);
+							pos.y += spacing;
+						}
+					}
+
+					if(is_key_pressed(g_input, c_key_enter))
+					{
+						apply_upgrade(game->transient.upgrade_choices[selected]);
+					}
+				}
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		upgrade menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 			#ifdef m_debug
 			if(game->in_debug_menu)
 			{
-				b8* target_vars[] = {
-					&game->high_speed, &game->player_bounds, &game->camera_bounds,
-				};
-				char* text[] = {
-					"High speed", "Player bounds", "Camera bounds",
-				};
 
+				b8** target_vars = get_debug_vars();
 				s_v2 pos = v2(4, 4);
 				e_font font_type = e_font_medium;
-				for(int option_i = 0; option_i < array_count(text); option_i++)
+				for(int option_i = 0; option_i < array_count(debug_text); option_i++)
 				{
 					s_v4 color = zero;
 					if(game->debug_menu_index == option_i)
@@ -500,7 +626,7 @@ func void render(float dt)
 					{
 						color = v4(1, 0, 0, 1);
 					}
-					draw_text(text[option_i], pos, 15, color, font_type, false);
+					draw_text(debug_text[option_i], pos, 15, color, font_type, false);
 					pos.y += game->font_arr[font_type].size;
 				}
 			}
@@ -562,6 +688,7 @@ func void render(float dt)
 			glUniform1i(1, 1);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			// glBlendFunc(GL_ONE, GL_ONE);
 			glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(*transforms.elements) * transforms.count, transforms.elements);
 			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, transforms.count);
@@ -822,28 +949,28 @@ func u32 load_shader(const char* vertex_path, const char* fragment_path)
 	return program;
 }
 
-func b8 is_key_down(int key)
+func b8 is_key_down(s_input* input, int key)
 {
 	assert(key < c_max_keys);
-	return g_input->keys[key].is_down || g_input->keys[key].count >= 2;
+	return input->keys[key].is_down || input->keys[key].count >= 2;
 }
 
-func b8 is_key_up(int key)
+func b8 is_key_up(s_input* input, int key)
 {
 	assert(key < c_max_keys);
-	return !g_input->keys[key].is_down;
+	return !input->keys[key].is_down;
 }
 
-func b8 is_key_pressed(int key)
+func b8 is_key_pressed(s_input* input, int key)
 {
 	assert(key < c_max_keys);
-	return (g_input->keys[key].is_down && g_input->keys[key].count == 1) || g_input->keys[key].count > 1;
+	return (input->keys[key].is_down && input->keys[key].count == 1) || input->keys[key].count > 1;
 }
 
-func b8 is_key_released(int key)
+func b8 is_key_released(s_input* input, int key)
 {
 	assert(key < c_max_keys);
-	return (!g_input->keys[key].is_down && g_input->keys[key].count == 1) || g_input->keys[key].count > 1;
+	return (!input->keys[key].is_down && input->keys[key].count == 1) || input->keys[key].count > 1;
 }
 
 void gl_debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -911,14 +1038,15 @@ func void reset_level()
 			}
 		}
 	}
+	game->player = zero;
 	game->player.pos.x = c_tile_size * c_tiles_right / 2;
 	game->player.pos.y = -500;
 	game->player.prev_pos = game->player.pos;
-	game->player.dig_timer = 0;
-	game->player.vel = zero;
 	game->camera.center = game->player.pos;
 	game->camera.prev_center = game->camera.center;
-	game->kill_area_bottom = -1200;
+	game->kill_area_bottom = -900;
+	game->kill_area_timer = 0;
+	memset(&game->transient, 0, sizeof(game->transient));
 }
 
 func s_bounds get_camera_bounds(s_camera camera)
@@ -998,3 +1126,184 @@ func s_v2 tile_index_to_tile_center(s_v2i index)
 	result.y = index.y * c_tile_size + c_tile_size / 2.0f;
 	return result;
 }
+
+func float get_dig_delay()
+{
+	float result = c_dig_delay;
+	float inc = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_dig_speed]; i++)
+	{
+		inc += get_upgrade_value(e_upgrade_dig_speed, i) / 100;
+	}
+	result /= inc;
+	if(game->super_dig)
+	{
+		result *= 0.1f;
+	}
+	return result;
+}
+
+func float get_dig_range()
+{
+	float result = c_dig_range;
+
+	float inc = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_dig_range]; i++)
+	{
+		inc += get_upgrade_value(e_upgrade_dig_range, i) / 100;
+	}
+	result *= inc;
+
+	if(game->super_dig)
+	{
+		result *= 3;
+	}
+	return result;
+}
+
+func float get_movement_speed()
+{
+	float result = c_player_speed;
+
+	float inc = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_movement_speed]; i++)
+	{
+		inc += get_upgrade_value(e_upgrade_movement_speed, i) / 100;
+	}
+	result *= inc;
+
+	if(game->high_speed)
+	{
+		result *= 5;
+	}
+	return result;
+}
+
+func int get_max_health()
+{
+	int result = c_player_health;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_health]; i++)
+	{
+		result += (int)get_upgrade_value(e_upgrade_health, i);
+	}
+	return result;
+}
+
+
+func b8** get_debug_vars()
+{
+	b8** result = (b8**)la_get(g_platform_data->frame_arena, array_count(debug_text) * sizeof(b8*));
+	result[0] = &game->high_speed;
+	result[1] = &game->super_dig;
+	result[2] = &game->player_bounds;
+	result[3] = &game->camera_bounds;
+	return result;
+}
+
+func int get_max_jumps()
+{
+	int result = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_extra_jump]; i++)
+	{
+		result += (int)get_upgrade_value(e_upgrade_extra_jump, i);
+	}
+	return result;
+}
+
+func void trigger_upgrade_menu()
+{
+	assert(!game->transient.in_upgrade_menu);
+	s_rng* rng = &game->rng;
+	game->transient.in_upgrade_menu = true;
+	game->transient.upgrade_choices.count = 0;
+	game->transient.upgrade_index = 0;
+
+	s_sarray<int, e_upgrade_count> available_upgrades = zero;
+	for(int upgrade_i = 0; upgrade_i < e_upgrade_count; upgrade_i++)
+	{
+		available_upgrades.add(upgrade_i);
+	}
+
+	for(int i = 0; i < 3; i++)
+	{
+		int rand_index = rng->randu() % available_upgrades.count;
+		game->transient.upgrade_choices.add(available_upgrades[rand_index]);
+		available_upgrades.remove_and_swap(rand_index);
+	}
+}
+
+func b8 mouse_collides_rect_topleft(s_v2 mouse, s_v2 pos, s_v2 size)
+{
+	return rect_collides_rect_topleft(mouse, v2(1, 1), pos, size);
+}
+
+func void apply_upgrade(int index)
+{
+	game->transient.upgrades_chosen[index] += 1;
+	game->transient.in_upgrade_menu = false;
+}
+
+func char* get_upgrade_description(int id, int level)
+{
+	float value = get_upgrade_value(id, level);
+	switch(id)
+	{
+		case e_upgrade_dig_speed:
+		{
+			return format_text("+%0.f%% digging speed", value);
+		} break;
+
+		case e_upgrade_dig_range:
+		{
+			return format_text("+%0.f%% dig range", value);
+		} break;
+
+		case e_upgrade_movement_speed:
+		{
+			return format_text("+%0.f%% movement speed", value);
+		} break;
+		case e_upgrade_health:
+		{
+			return format_text("+%0.f health", value);
+		} break;
+		case e_upgrade_extra_jump:
+		{
+			return format_text("+%0.f jump", value);
+		} break;
+
+		invalid_default_case;
+	}
+	return null;
+}
+
+func float get_upgrade_value(int id, int level)
+{
+	switch(id)
+	{
+		case e_upgrade_dig_speed:
+		{
+			return 50.0f + 10 * level;
+		} break;
+
+		case e_upgrade_dig_range:
+		{
+			return 40.0f + 10 * level;
+		} break;
+		case e_upgrade_movement_speed:
+		{
+			return 25.0f + 5 * level;
+		} break;
+		case e_upgrade_health:
+		{
+			return 1;
+		} break;
+		case e_upgrade_extra_jump:
+		{
+			return 1;
+		} break;
+
+		invalid_default_case;
+	}
+	return 0;
+}
+

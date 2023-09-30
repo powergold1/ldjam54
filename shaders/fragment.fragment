@@ -21,6 +21,12 @@ vec2 n22(vec2 p)
 	return fract(vec2(a.x * a.y, a.y * a.z));
 }
 
+float range_lerp(float val, float amin, float amax, float bmin, float bmax)
+{
+	float p = (val - amin) / (amax - amin);
+	return bmin + (bmax - bmin) * p;
+}
+
 float sin2(float s)
 {
 	return sin(s) * 0.5 + 0.5;
@@ -51,12 +57,6 @@ void main()
 {
 	s_transform t = v_t;
 
-	if(t.do_clip != 0)
-	{
-		// vec2 pos = t.pos + t.draw_size * v_local_uv;
-		if(!point_in_rect_topleft(gl_FragCoord.xy, t.clip_pos, t.clip_size)) { discard; }
-	}
-
 	vec4 color;
 	if(t.texture_id != 0)
 	{
@@ -83,9 +83,19 @@ void main()
 		// n = pow(n, 0.25);
 		n = smoothstep(0.4, 0.8, n);
 		n = pow(n, smoothstep(0.2, 0.3, d));
-
-
 		color.rgb *= n;
+	}
+
+	if(t.effect_id == 111)
+	{
+		vec2 uv = v_local_uv;
+		color.rgb = vec3(1.0,0,0);
+		float t = sin(time * 0.5) * 2.0;
+		float mag = range_lerp(sin(time + uv.x * 7.0), -1, 1, 0.0, 0.3);
+		float foo = 0.1 + mag;
+		float arg = uv.y + foo + foo * cos(t + uv.x * 50);
+		color.g = clamp((1.0 - arg) * 1, 0.0, 1.0);
+		color.a = clamp((1.0 - arg) * 30, 0.0, 1.0);
 	}
 	color = pma(color);
 

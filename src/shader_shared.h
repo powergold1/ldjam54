@@ -19,7 +19,6 @@ typedef
 #endif
 struct s_transform
 {
-	shader_bool do_clip;
 	shader_bool do_circle;
 	shader_bool do_light;
 	shader_bool do_noise;
@@ -27,14 +26,12 @@ struct s_transform
 	shader_int layer;
 	shader_int texture_id;
 	shader_int sublayer;
-	shader_int background_id;
+	shader_int effect_id;
 	shader_float mix_weight;
 	shader_v2 pos;
 	shader_v2 origin_offset;
 	shader_v2 draw_size;
 	shader_v2 texture_size;
-	shader_v2 clip_pos;
-	shader_v2 clip_size;
 	shader_v2 uv_min;
 	shader_v2 uv_max;
 	shader_v4 color;

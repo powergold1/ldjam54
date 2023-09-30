@@ -17,6 +17,7 @@
 
 global s_window g_window;
 global s_input g_input;
+global s_input g_logic_input;
 global s_voice voice_arr[c_max_concurrent_sounds];
 global u64 g_cycle_frequency;
 global u64 g_start_cycles;
@@ -97,6 +98,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		}
 
 		g_platform_data.input = &g_input;
+		g_platform_data.logic_input = &g_logic_input;
 		g_platform_data.quit_after_this_frame = !running;
 		g_platform_data.window_width = g_window.width;
 		g_platform_data.window_height = g_window.height;
@@ -177,6 +179,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 				si.key = key;
 				si.is_down = is_down;
 				apply_event_to_input(&g_input, si);
+				apply_event_to_input(&g_logic_input, si);
 			}
 		} break;
 
@@ -202,6 +205,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 			si.key = key;
 			si.is_down = is_down;
 			apply_event_to_input(&g_input, si);
+			apply_event_to_input(&g_logic_input, si);
 			g_platform_data.any_key_pressed = true;
 		} break;
 

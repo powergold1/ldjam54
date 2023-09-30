@@ -156,6 +156,7 @@ struct s_platform_data
 	int window_height;
 	f64 time_passed;
 	s_input* input;
+	s_input* logic_input;
 	s_lin_arena* frame_arena;
 	s_v2 mouse;
 };

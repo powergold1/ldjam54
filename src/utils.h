@@ -282,3 +282,9 @@ func int circular_index(int index, int size)
 	}
 	return (size - 1) - ((-index - 1) % size);
 }
+
+[[nodiscard]]
+func s_v4 rgb(float r, float g, float b)
+{
+	return v4(r, g, b, 1);
+}
