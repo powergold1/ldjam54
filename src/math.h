@@ -328,9 +328,34 @@ func void operator*=(s_v2& a, float b)
 	a.y *= b;
 }
 
+
+func float v2_length(s_v2 a)
+{
+	return sqrtf(a.x * a.x + a.y * a.y);
+}
+
+func float v2_distance(s_v2 a, s_v2 b)
+{
+	return v2_length(a - b);
+}
+
+
 func s_v2 lerp(s_v2 a, s_v2 b, float t)
 {
 	s_v2 result;
+	result.x = lerp(a.x, b.x, t);
+	result.y = lerp(a.y, b.y, t);
+	return result;
+}
+
+func s_v2 lerp_snap(s_v2 a, s_v2 b, float t)
+{
+	s_v2 result;
+	float dist = v2_distance(a, b);
+	if(dist < 1.0f)
+	{
+		t = 1;
+	}
 	result.x = lerp(a.x, b.x, t);
 	result.y = lerp(a.y, b.y, t);
 	return result;
@@ -344,16 +369,6 @@ func s_v4 lerp(s_v4 a, s_v4 b, float t)
 	result.z = lerp(a.z, b.z, t);
 	result.w = lerp(a.w, b.w, t);
 	return result;
-}
-
-func float v2_length(s_v2 a)
-{
-	return sqrtf(a.x * a.x + a.y * a.y);
-}
-
-func float v2_distance(s_v2 a, s_v2 b)
-{
-	return v2_length(a - b);
 }
 
 func s_v2 v2_normalized(s_v2 v)

@@ -424,7 +424,7 @@ func void update()
 					}
 				}
 
-				game->camera.center = get_camera_wanted_center(*player);
+				game->camera.center = lerp_snap(game->camera.center, get_camera_wanted_center(*player), delta * 10);
 
 				float dig_delay = get_dig_delay();
 				player->dig_timer = at_most(dig_delay + delta, player->dig_timer + delta);
