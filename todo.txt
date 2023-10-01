@@ -1,11 +1,8 @@
 
 we still have that ui bug where the first upgrade is not always the default. cringe!!
-
-some indicator of whether we can dash or not
-	or some visual effect when dash cooldown is refreshed
-
 buffs like: every second, fire a block breaking laser or whatever
 show controls in game!!
+make kill area not a disgusting white quad
 
 polish:
 	particles
@@ -21,6 +18,9 @@ polish:
 	make it so the particles when breaking block appear on the cursor if the block is hovered. random otherwise
 	camera smoothing?
 	portal sound effect
+	some indicator of whether we can dash or not
+		or some visual effect when dash cooldown is refreshed
+	dash visuals/sound
 
 
 probably not:
