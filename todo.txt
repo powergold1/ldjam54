@@ -23,6 +23,8 @@ polish:
 	background
 	some block dead animation instead of just disappearing
 	upgrade/level sound
+	cool cursor
+	sound when moving through upgrade options
 
 
 probably not:

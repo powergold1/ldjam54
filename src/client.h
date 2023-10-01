@@ -101,9 +101,34 @@ struct s_shader_paths
 	char* fragment_path;
 };
 
+struct s_ui_state
+{
+	b8 clicked;
+};
+
+struct s_ui_foo
+{
+	u32 id;
+	int index;
+};
+
+struct s_ui
+{
+	s_ui_foo selected;
+	s_ui_foo hovered;
+	s_ui_foo pressed;
+};
+
+struct s_label_group
+{
+	int default_selected;
+	s_v2 pos;
+	e_font font_type;
+	s_sarray<u32, 8> ids;
+};
+
 struct s_entity
 {
-	int id;
 	union
 	{
 		struct
@@ -443,6 +468,14 @@ func s_v2 get_tile_pos(s_v2i index);
 func void do_normal_render(u32 texture, int render_type);
 func void do_tile_particles(s_v2 pos, int tile_type, int type);
 func void recreate_particle_framebuffer(int width, int height);
+func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected);
+func s_ui_state add_label(s_label_group* group, char* text);
+func int end_label_group(s_label_group* group);
+func u32 hash(const char* text);
+func void ui_request_hovered(u32 id, int index);
+func void ui_request_pressed(u32 id, int index);
+func void ui_request_active(u32 id);
+func void ui_request_selected(u32 id, int index);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

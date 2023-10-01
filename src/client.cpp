@@ -48,6 +48,7 @@ global s_platform_funcs g_platform_funcs;
 global s_game* game;
 
 global s_v2 previous_mouse;
+global s_ui g_ui;
 
 global s_shader_paths shader_paths[e_shader_count] = {
 	{
@@ -670,68 +671,19 @@ func void render(float dt)
 						c_half_res, 10, c_half_res, rgb(0.1f, 0.1f, 0.1f), game->sprite_data[e_sprite_rect], false, dt
 					);
 
-					if(is_key_pressed(g_input, c_key_up) || is_key_pressed(g_input, c_key_w))
+					s_label_group group = begin_label_group(c_half_res, e_font_medium, game->transient.upgrade_index);
+					for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
 					{
-						game->transient.upgrade_index = circular_index(game->transient.upgrade_index - 1, 3);
-					}
-					if(is_key_pressed(g_input, c_key_down) || is_key_pressed(g_input, c_key_s))
-					{
-						game->transient.upgrade_index = circular_index(game->transient.upgrade_index + 1, 3);
-					}
-
-					int selected = game->transient.upgrade_index;
-					b8 upgrade_hovered = false;
-					{
-						s_v2 pos = base_pos;
-						for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
+						int upgrade_id = game->transient.upgrade_choices[upgrade_i];
+						int upgrade_level = game->transient.upgrades_chosen[upgrade_id];
+						char* text = get_upgrade_description(upgrade_id, upgrade_level);
+						s_ui_state state = add_label(&group, text);
+						if(state.clicked)
 						{
-							int upgrade_id = game->transient.upgrade_choices[upgrade_i];
-							int upgrade_level = game->transient.upgrades_chosen[upgrade_id];
-							char* text = get_upgrade_description(upgrade_id, upgrade_level);
-							s_v2 size = get_text_size(text, font_type);
-							s_v2 temp_pos = pos;
-							temp_pos -= size / 2;
-							if(mouse_collides_rect_topleft(g_platform_data->mouse, temp_pos, size))
-							{
-								game->transient.upgrade_index = upgrade_i;
-								selected = upgrade_i;
-								upgrade_hovered = true;
-								break;
-							}
-							pos.y += spacing;
+							apply_upgrade(upgrade_id);
 						}
 					}
-
-					{
-						s_v2 pos = base_pos;
-						for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
-						{
-							s_v4 color = rgb(0.7f, 0.7f, 0.7f);
-							int upgrade_id = game->transient.upgrade_choices[upgrade_i];
-							int upgrade_level = game->transient.upgrades_chosen[upgrade_id];
-							char* text = get_upgrade_description(upgrade_id, upgrade_level);
-							s_v2 size = get_text_size(text, font_type);
-							s_v2 temp_pos = pos;
-							temp_pos -= size / 2;
-
-							if(upgrade_i == selected)
-							{
-								color = rgb(1, 1, 0);
-							}
-
-							draw_text(text, pos, 15, color, font_type, true);
-							pos.y += spacing;
-						}
-					}
-
-					// @Fixme(tkap, 01/10/2023): good ui system
-					if(
-						is_key_pressed(g_input, c_key_enter) ||
-						(upgrade_hovered && is_key_released(g_input, c_left_mouse))
-					)
-					{
-						apply_upgrade(game->transient.upgrade_choices[selected]);
-					}
+					game->transient.upgrade_index = end_label_group(&group);
 				}
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		upgrade menu end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -872,6 +824,7 @@ func void render(float dt)
 		}
 
 	}
+
 
 	#ifdef m_debug
 	hot_reload_shaders();
@@ -1172,6 +1125,7 @@ func void play_delayed_sound(s_sound sound, float delay)
 
 func void reset_level()
 {
+	g_ui = zero;
 	s_rng* rng = &game->rng;
 	memset(&game->transient, 0, sizeof(game->transient));
 	memset(game->tiles_active, true, sizeof(game->tiles_active));
@@ -1676,4 +1630,143 @@ func void recreate_particle_framebuffer(int width, int height)
 
 	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected)
+{
+	s_label_group result = zero;
+	result.pos = pos;
+	result.font_type = font_type;
+	result.default_selected = selected;
+	return result;
+}
+
+func s_ui_state add_label(s_label_group* group, char* text)
+{
+	s_ui_state result = zero;
+	u32 id = hash(text);
+	int index = group->ids.count;
+
+	if(index == group->default_selected && g_ui.selected.id == 0 && g_ui.hovered.id == 0 && g_ui.pressed.id == 0)
+	{
+		ui_request_selected(id, index);
+	}
+
+	group->ids.add(id);
+	s_v4 color = rgb(0.7f, 0.7f, 0.7f);
+	s_v2 label_size = get_text_size(text, group->font_type);
+	s_v2 label_topleft = group->pos - label_size / 2;
+	b8 hovered = mouse_collides_rect_topleft(g_platform_data->mouse, label_topleft, label_size);
+	b8 selected = id == g_ui.selected.id;
+	if(hovered || (selected && g_ui.hovered.id == 0))
+	{
+		ui_request_hovered(id, index);
+	}
+	if(g_ui.hovered.id == id)
+	{
+		color = rgb(1, 1, 0);
+		if(hovered)
+		{
+			if(is_key_pressed(g_input, c_left_mouse))
+			{
+				ui_request_pressed(id, index);
+			}
+		}
+		else
+		{
+			g_ui.hovered = zero;
+		}
+		if(is_key_pressed(g_input, c_key_enter))
+		{
+			result.clicked = true;
+		}
+	}
+	if(g_ui.pressed.id == id)
+	{
+		color = color = rgb(0.7f, 0.7f, 0);
+		if(is_key_released(g_input, c_left_mouse))
+		{
+			if(hovered)
+			{
+				ui_request_active(id);
+				result.clicked = true;
+			}
+			else
+			{
+				g_ui.pressed = zero;
+			}
+		}
+	}
+
+	draw_text(text, group->pos, 15, color, group->font_type, true);
+	group->pos.y += game->font_arr[group->font_type].size;
+
+	if(result.clicked)
+	{
+		g_ui = zero;
+	}
+
+	return result;
+}
+
+func int end_label_group(s_label_group* group)
+{
+	if(g_ui.hovered.id != 0) { return g_ui.hovered.index; }
+	if(g_ui.pressed.id != 0) { return g_ui.pressed.index; }
+	int selected = g_ui.selected.index;
+	if(is_key_pressed(g_input, c_key_up))
+	{
+		selected = circular_index(selected - 1, group->ids.count);
+	}
+	if(is_key_pressed(g_input, c_key_down))
+	{
+		selected = circular_index(selected + 1, group->ids.count);
+	}
+	ui_request_selected(group->ids[selected], selected);
+	return selected;
+}
+
+func u32 hash(const char* text)
+{
+	assert(text);
+	u32 hash = 5381;
+	while(true)
+	{
+		int c = *text;
+		text += 1;
+		if(!c) { break; }
+		hash = ((hash << 5) + hash) + c;
+	}
+	return hash;
+}
+
+func void ui_request_selected(u32 id, int index)
+{
+	if(g_ui.hovered.id != 0) { return; }
+	if(g_ui.pressed.id != 0) { return; }
+	g_ui.selected.id = id;
+	g_ui.selected.index = index;
+}
+
+func void ui_request_hovered(u32 id, int index)
+{
+	if(g_ui.pressed.id != 0) { return; }
+	g_ui.hovered.id = id;
+	g_ui.hovered.index = index;
+	g_ui.selected.id = id;
+	g_ui.selected.index = index;
+}
+
+func void ui_request_pressed(u32 id, int index)
+{
+	g_ui.hovered = zero;
+	g_ui.pressed.id = id;
+	g_ui.pressed.index = index;
+}
+
+func void ui_request_active(u32 id)
+{
+	unreferenced(id);
+	g_ui.hovered = zero;
+	g_ui.pressed = zero;
 }
