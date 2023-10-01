@@ -14,7 +14,7 @@ set comp=-nologo -std:c++20 -Zc:strictStrings- -W4 -FC -Gm- -GR- -EHa- -wd 4324 
 set linker=-INCREMENTAL:NO
 set comp=%comp% -wd4201
 
-set debug=2
+set debug=0
 if %debug%==0 (
 	set comp=%comp% -O2 -MT
 	set linker=%linker% -SUBSYSTEM:windows

@@ -82,6 +82,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 	b8 running = true;
 	f64 time_passed = 0;
+
+	#ifndef m_debug
+	g_platform_data.recompiled = true;
+	#endif // m_debug
+
 	while(running)
 	{
 		f64 start_of_frame_seconds = get_seconds();

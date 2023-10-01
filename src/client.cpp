@@ -1199,10 +1199,14 @@ func u32 load_shader(const char* vertex_path, const char* fragment_path)
 	if(!vertex_src || !vertex_src[0]) { return 0; }
 	char* fragment_src = read_file(fragment_path, frame_arena);
 	if(!fragment_src || !fragment_src[0]) { return 0; }
+
+	#ifdef m_debug
 	const char* vertex_src_arr[] = {header, read_file("src/shader_shared.h", frame_arena), vertex_src};
 	const char* fragment_src_arr[] = {header, read_file("src/shader_shared.h", frame_arena), fragment_src};
-	// const char* vertex_src_arr[] = {header, vertex_src};
-	// const char* fragment_src_arr[] = {header, fragment_src};
+	#else // m_debug
+	const char* vertex_src_arr[] = {header, vertex_src};
+	const char* fragment_src_arr[] = {header, fragment_src};
+	#endif // m_debug
 	glShaderSource(vertex, array_count(vertex_src_arr), (const GLchar * const *)vertex_src_arr, null);
 	glShaderSource(fragment, array_count(fragment_src_arr), (const GLchar * const *)fragment_src_arr, null);
 	glCompileShader(vertex);
