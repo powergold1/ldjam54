@@ -7,8 +7,6 @@ polish:
 	cool cursor
 	sound when moving through upgrade options
 	make it so the particles when breaking block appear on the cursor if the block is hovered. random otherwise
-	camera smoothing?
-	portal sound effect
 	some indicator of whether we can dash or not
 		or some visual effect when dash cooldown is refreshed
 	dash visuals/sound
