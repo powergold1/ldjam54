@@ -21,6 +21,7 @@ enum e_layer
 	e_layer_background,
 	e_layer_tiles,
 	e_layer_tiles_decal,
+	e_layer_portal,
 	e_layer_player,
 	e_layer_particles,
 	e_layer_kill_area,
@@ -193,6 +194,11 @@ struct s_player : s_entity
 	s_v2 vel;
 };
 
+struct s_portal : s_entity
+{
+	s_v2 target_pos;
+};
+
 struct s_sprite_data
 {
 	s_v2i pos;
@@ -342,6 +348,7 @@ struct s_game_transient
 	s_sarray<int, 3> upgrade_choices;
 	int upgrades_chosen[e_upgrade_count];
 	s_player player;
+	s_sarray<s_portal, 128> portals;
 	float kill_area_timer;
 	float winning_timer;
 	int upgrades_queued;
@@ -476,6 +483,7 @@ func void ui_request_hovered(u32 id, int index);
 func void ui_request_pressed(u32 id, int index);
 func void ui_request_active(u32 id);
 func void ui_request_selected(u32 id, int index);
+func s_v2 get_camera_wanted_center(s_player player);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

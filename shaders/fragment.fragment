@@ -70,7 +70,6 @@ void main()
 		color.rgb = mix(color.rgb, t.mix_color.rgb, t.mix_weight);
 	}
 
-
 	if(t.do_circle != 0)
 	{
 		float d = distance(v_local_uv, vec2(0.5));
@@ -88,6 +87,7 @@ void main()
 		color.rgb *= n;
 	}
 
+	// @Note(tkap, 01/10/2023): kill area
 	if(t.effect_id == 111)
 	{
 		vec2 uv = v_local_uv;
@@ -99,7 +99,9 @@ void main()
 		color.g = clamp((1.0 - arg) * 1, 0.0, 1.0);
 		color.a = clamp((1.0 - arg) * 30, 0.0, 1.0);
 	}
-	else if(t.effect_id == 22)
+
+	// @Note(tkap, 01/10/2023): Background
+	else if(t.effect_id == 2)
 	{
 		vec2 ar = vec2(1.0, window_size.y / window_size.x);
 		vec2 uv = v_local_uv * ar;
@@ -135,6 +137,19 @@ void main()
 		color.g *= 1-p;
 
 		color.rgb *= 0.1;
+	}
+	else if(t.effect_id == 3)
+	{
+		color.rgb = vec3(0.3, 0.1, 1.5);
+		float n = texture(noise, v_local_uv * 0.25 + time * 0.03).r;
+		float d = distance(v_local_uv, vec2(0.5));
+
+		float a = smoothstep(0.0, 0.4, d);
+		float b = smoothstep(0.2, 0.6, d);
+		color.rgb *= a;
+		color.rgb += b;
+		color.rgb *= n;
+		color.a *= smoothstep(0.499, 0.4, d);
 	}
 	color = pma(color);
 

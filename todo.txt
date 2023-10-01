@@ -1,7 +1,4 @@
 slow down wall upgrade?
-need a satisfying sound when breaking blocks!!
-unbreakable block
-gemstones (just a big exp, easy to break block)
 portals that teleport you down?? (and then up when going in reverse)
 dash upgrade? breaks blocks (only sideways?)
 make weight_add a float so we can increase frequency by height buy very slowly
@@ -25,6 +22,9 @@ polish:
 	upgrade/level sound
 	cool cursor
 	sound when moving through upgrade options
+	make it so the particles when breaking block appear on the cursor if the block is hovered. random otherwise
+	camera smoothing?
+	portal sound effect
 
 
 probably not:

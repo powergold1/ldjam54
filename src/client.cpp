@@ -402,6 +402,18 @@ func void update()
 					}
 				}
 
+				// @Note(tkap, 01/10/2023): Check for portal
+				foreach_raw(portal_i, portal, game->transient.portals)
+				{
+					float distance = v2_distance(portal.pos, player->pos);
+					if(distance < c_portal_size * 0.5f)
+					{
+						player->pos = portal.target_pos;
+						play_sound_if_supported(e_sound_break_gem);
+						break;
+					}
+				}
+
 				// @Note(tkap, 30/09/2023): Check for win
 				if(!game->transient.winning && !game->transient.won)
 				{
@@ -412,15 +424,7 @@ func void update()
 					}
 				}
 
-				game->camera.center = player->pos;
-
-				if(game->camera_bounds)
-				{
-					s_bounds cam_bounds = get_camera_bounds(game->camera);
-					float right_limit = c_tiles_right * c_tile_size;
-					game->camera.center.x = at_least(c_half_res.x, game->camera.center.x);
-					game->camera.center.x = at_most(right_limit - c_half_res.x, game->camera.center.x);
-				}
+				game->camera.center = get_camera_wanted_center(*player);
 
 				float dig_delay = get_dig_delay();
 				player->dig_timer = at_most(dig_delay + delta, player->dig_timer + delta);
@@ -600,7 +604,7 @@ func void render(float dt)
 			// @Note(tkap, 01/10/2023): Background
 			draw_texture(
 				c_half_res, e_layer_background, c_base_res, make_color(1), game->sprite_data[e_sprite_rect], false, dt,
-				{.effect_id = 22}
+				{.effect_id = 2}
 			);
 
 			int left_tile = at_least(0, floorfi(cam_bounds.left / c_tile_size));
@@ -656,6 +660,16 @@ func void render(float dt)
 						});
 					}
 				}
+			}
+
+			// @Note(tkap, 01/10/2023): Portals
+			foreach_raw(portal_i, portal, game->transient.portals)
+			{
+				draw_texture(
+					portal.pos, e_layer_portal, v2(c_portal_size), make_color(0, 1, 0), game->sprite_data[e_sprite_rect], true, dt,
+					{.effect_id = 3}
+				);
+				// draw_texture(portal.target_pos, e_layer_portal, v2(c_tile_size), make_color(1, 0, 0), game->sprite_data[e_sprite_player], true, dt);
 			}
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		upgrade menu start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -805,8 +819,6 @@ func void render(float dt)
 		}
 		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		render particles end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
-
 		for(int font_i = 0; font_i < e_font_count; font_i++)
 		{
 			glBindVertexArray(game->default_vao);
@@ -822,9 +834,7 @@ func void render(float dt)
 				text_arr[font_i].count = 0;
 			}
 		}
-
 	}
-
 
 	#ifdef m_debug
 	hot_reload_shaders();
@@ -1129,13 +1139,14 @@ func void reset_level()
 	s_rng* rng = &game->rng;
 	memset(&game->transient, 0, sizeof(game->transient));
 	memset(game->tiles_active, true, sizeof(game->tiles_active));
+	int last_y_index = c_tiles_down - 1;
 	for(int y = 0; y < c_tiles_down; y++)
 	{
 		s64* weights = get_tile_weights_for_y(y, e_tile_count);
 		for(int x = 0; x < c_tiles_right; x++)
 		{
 			game->tiles[y][x] = zero;
-			if(y == c_tiles_down - 1)
+			if(y == last_y_index)
 			{
 				game->tiles[y][x].type = e_tile_unbreakable;
 			}
@@ -1149,6 +1160,31 @@ func void reset_level()
 			}
 		}
 	}
+
+	// @Note(tkap, 01/10/2023): Add portals
+	b8 portals[c_tiles_down][c_tiles_right] = zero;
+	for(int y = 1; y < c_tiles_down - c_portal_distance - 1; y++)
+	{
+		for(int x = 0; x < c_tiles_right; x++)
+		{
+			s_v2i target = v2i(rng->randu() % c_tiles_right, y + c_portal_distance);
+			if(!portals[y][x] && !portals[target.y][target.x] && rng->randf32() <= 0.001f)
+			{
+				game->tiles_active[y][x] = false;
+				game->tiles_active[target.y][target.x] = false;
+
+				s_portal portal = zero;
+				portal.pos = get_tile_center(v2i(x, y));
+				portal.target_pos = get_tile_center(v2i(target.x, target.y));
+				game->transient.portals.add_checked(portal);
+
+				portals[y][x] = true;
+				portals[target.y][target.x] = true;
+			}
+		}
+	}
+
+
 	s_player* player = &game->transient.player;
 	player->pos.x = c_tile_size * c_tiles_right / 2;
 	player->pos.y = -500;
@@ -1569,7 +1605,11 @@ func void do_normal_render(u32 texture, int render_type)
 	glBindVertexArray(game->default_vao);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, game->noise.id);
 	glUniform1i(1, 1);
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_GREATER);
 	glEnable(GL_BLEND);
@@ -1769,4 +1809,19 @@ func void ui_request_active(u32 id)
 	unreferenced(id);
 	g_ui.hovered = zero;
 	g_ui.pressed = zero;
+}
+
+func s_v2 get_camera_wanted_center(s_player player)
+{
+	s_v2 result = player.pos;
+
+	if(game->camera_bounds)
+	{
+		s_bounds cam_bounds = get_camera_bounds(game->camera);
+		float right_limit = c_tiles_right * c_tile_size;
+		result.x = at_least(c_half_res.x, result.x);
+		result.x = at_most(right_limit - c_half_res.x, result.x);
+	}
+	return result;
+
 }

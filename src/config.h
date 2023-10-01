@@ -7,7 +7,7 @@ global constexpr int c_num_channels = 2;
 global constexpr int c_sample_rate = 44100;
 global constexpr int c_max_concurrent_sounds = 32;
 
-global constexpr int c_updates_per_second = 60;
+global constexpr int c_updates_per_second = 5;
 global constexpr f64 c_update_delay = 1.0 / c_updates_per_second;
 
 #define c_origin_topleft {1.0f, -1.0f}
@@ -46,6 +46,8 @@ global constexpr float c_dig_delay = 0.15f;
 global constexpr float c_dig_range = 150;
 global constexpr float c_kill_area_delay = 1;
 global constexpr int c_player_health = 3;
+global constexpr int c_portal_distance = 10;
+global constexpr float c_portal_size = c_tile_size;
 
 global constexpr char* debug_text[] = {
 	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity", "No kill area",
