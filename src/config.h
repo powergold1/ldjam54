@@ -48,11 +48,11 @@ global constexpr float c_kill_area_delay = 1;
 global constexpr int c_player_health = 3;
 global constexpr int c_portal_distance = 10;
 global constexpr float c_portal_size = c_tile_size;
+global constexpr float c_tile_brightness = 0.6f;
+global constexpr float c_player_brightness = 0.6f;
+global constexpr float c_light_brightness = 0.15f;
+global constexpr float c_portal_brightness = 0.25f;
 
 global constexpr char* debug_text[] = {
 	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity", "No kill area",
-};
-
-global constexpr float c_depth_goals[] = {
-	1000, 2000, 3000, 4000, 6000, 80000, 10000, 15000, 20000
 };

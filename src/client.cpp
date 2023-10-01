@@ -410,8 +410,21 @@ func void update()
 					{
 						player->pos = portal.target_pos;
 						play_sound_if_supported(e_sound_break_gem);
-						break;
 					}
+
+					if(delta > 0)
+					{
+						spawn_particles(1, {
+							.speed = 0.0f,
+							.radius = 128.0f,
+							.duration = delta + 0.0001f,
+							.angle = 0,
+							.pos = portal.pos,
+							.color = v4(0.3f, 0.1f, 1.0f, c_portal_brightness),
+							.shrink = false,
+							.fade = false,
+						});
+				}
 				}
 
 				// @Note(tkap, 30/09/2023): Check for win
@@ -428,7 +441,7 @@ func void update()
 
 				float dig_delay = get_dig_delay();
 				player->dig_timer = at_most(dig_delay + delta, player->dig_timer + delta);
-				if(is_key_down(g_logic_input, c_left_mouse))
+				if(delta > 0 && is_key_down(g_logic_input, c_left_mouse))
 				{
 					while(player->dig_timer >= dig_delay)
 					{
@@ -480,6 +493,21 @@ func void update()
 							reset_level();
 						}
 					}
+				}
+
+				// @Note(tkap, 01/10/2023): Player "light"
+				if(delta > 0)
+				{
+					spawn_particles(1, {
+						.speed = 0.0f,
+						.radius = 256.0f,
+						.duration = delta + 0.0001f,
+						.angle = 0,
+						.pos = player->pos,
+						.color = v4(1, 1, 1, c_light_brightness),
+						.shrink = false,
+						.fade = false,
+					});
 				}
 
 			}
@@ -585,9 +613,10 @@ func void render(float dt)
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		exp bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+			// @Note(tkap, 01/10/2023): Draw player
 			{
 				s_v2 pos = lerp(game->transient.player.prev_pos, game->transient.player.pos, dt);
-				draw_texture(pos, e_layer_player, c_player_size, v4(1,1,1,1), game->sprite_data[e_sprite_player], true, dt);
+				draw_texture(pos, e_layer_player, c_player_size, make_color(c_player_brightness), game->sprite_data[e_sprite_player], true, dt);
 			}
 
 			{
@@ -624,10 +653,12 @@ func void render(float dt)
 					float mix_weight = 0;
 					if(hovered == v2i(x, y))
 					{
-						mix_weight = 0.5f;
+						mix_weight = 0.25f;
 					}
+
+					// @Note(tkap, 01/10/2023): Draw tiles
 					draw_texture(
-						v2(x * c_tile_size, y * c_tile_size), e_layer_tiles, v2(c_tile_size), v4(1,1,1,1),
+						v2(x * c_tile_size, y * c_tile_size), e_layer_tiles, v2(c_tile_size), make_color(c_tile_brightness),
 						game->sprite_data[g_tile_data[tile.type].sprite],
 						true, dt, {.mix_weight = mix_weight, .origin_offset = c_origin_topleft, .mix_color = mix_color}
 					);
@@ -645,7 +676,7 @@ func void render(float dt)
 						);
 					}
 
-					if(game->frame_count % 10 == 0 && (tile.type == e_tile_emerald || tile.type == e_tile_ruby))
+					if(!game->transient.in_upgrade_menu && game->frame_count % 10 == 0 && (tile.type == e_tile_emerald || tile.type == e_tile_ruby))
 					{
 						s_v4 color = g_tile_data[tile.type].particle_color;
 						color.w *= 0.1f;
@@ -763,8 +794,16 @@ func void render(float dt)
 		s_v4 color = particle.color;
 		float percent = (particle.time / particle.duration);
 		float percent_left = 1.0f - percent;
-		color.w *= powf(percent_left, 0.5f);
-		draw_circle_p(particle.pos, e_layer_particles, particle.radius * range_lerp(percent, 0, 1, 1, 0.2f), color, &interpolated_camera);
+		if(particle.fade)
+		{
+			color.w *= powf(percent_left, 0.5f);
+		}
+		float radius = particle.radius;
+		if(particle.shrink)
+		{
+			radius *= range_lerp(percent, 0, 1, 1, 0.2f);
+		}
+		draw_circle_p(particle.pos, e_layer_particles, radius, color, &interpolated_camera);
 	}
 
 	{
@@ -1119,6 +1158,8 @@ func void spawn_particles(int count, s_particle_spawn_data data)
 		p.color.y = data.color.y * (1 - data.color_rand * game->rng.randf32());
 		p.color.z = data.color.z * (1 - data.color_rand * game->rng.randf32());
 		p.color.w = data.color.w;
+		p.fade = data.fade;
+		p.shrink = data.shrink;
 		game->particles.add_checked(p);
 	}
 }

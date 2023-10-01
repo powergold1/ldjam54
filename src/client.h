@@ -164,6 +164,8 @@ struct s_particle_spawn_data
 	s_v2 pos;
 	s_v4 color;
 	float color_rand;
+	b8 shrink = true;
+	b8 fade = true;
 };
 
 struct s_particle
@@ -175,6 +177,8 @@ struct s_particle
 	s_v2 dir;
 	float radius;
 	s_v4 color;
+	b8 shrink;
+	b8 fade;
 };
 
 struct s_delayed_sound
