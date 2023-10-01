@@ -1,15 +1,6 @@
 slow down wall upgrade?
-portals that teleport you down?? (and then up when going in reverse)
 dash upgrade? breaks blocks (only sideways?)
-make weight_add a float so we can increase frequency by height buy very slowly
 buffs like: every second, fire a block breaking laser or whatever
-best time
-exp bar
-hot ui system
-see time ingame
-fix background
-
-1 frame particle could server as light??
 
 polish:
 	particles

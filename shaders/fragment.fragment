@@ -103,6 +103,7 @@ void main()
 	// @Note(tkap, 01/10/2023): Background
 	else if(t.effect_id == 2)
 	{
+		float p = player_pos.y / 32768.0;
 		vec2 ar = vec2(1.0, window_size.y / window_size.x);
 		vec2 uv = v_local_uv * ar;
 		float t = time * 0.05;
@@ -113,8 +114,6 @@ void main()
 		float r = n22(vec2(id.x, id.y)).x;
 		float g = n22(vec2(id.x+1000, id.y)).x;
 		float b = n22(vec2(id.x, id.y+1000)).x;
-		// uv = fract(uv);
-		// uv = uv * 2 - vec2(1);
 
 		color.r = r * 0.2;
 		color.g = g * 0.5;
@@ -122,7 +121,6 @@ void main()
 
 		uv *= 4;
 		id = ivec2(floor(uv.x+t*4)+1, floor(uv.y+t*4)+1);
-		// uv = fract(uv);
 
 		r = n22(vec2(id.x, id.y)).x;
 		g = n22(vec2(id.x+1000, id.y)).x;
@@ -132,7 +130,6 @@ void main()
 		color.g += g * 0.5;
 		color.b += b * 0.1;
 
-		float p = player_pos.y / 32768.0;
 		color.r += p;
 		color.g *= 1-p;
 

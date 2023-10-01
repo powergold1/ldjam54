@@ -93,6 +93,8 @@ m_update_game(update_game)
 		game->sounds[e_sound_break_gem] = load_wav("assets/break_gem.wav", g_platform_data->frame_arena);
 		game->sounds[e_sound_dig] = load_wav("assets/dig.wav", g_platform_data->frame_arena);
 
+		game->best_time = 999999.0f;
+
 		recreate_particle_framebuffer(platform_data->window_width, platform_data->window_height);
 
 		game->player_bounds = true;
@@ -521,6 +523,10 @@ func void update()
 					if(game->transient.winning_timer >= 3.0f)
 					{
 						game->state = e_state_victory;
+						if(game->best_time > game->transient.beat_time)
+						{
+							game->best_time = game->transient.beat_time;
+						}
 					}
 				}
 			}
@@ -587,6 +593,9 @@ func void render(float dt)
 		{
 			interpolated_camera.center = lerp(interpolated_camera.prev_center, interpolated_camera.center, dt);
 			s_bounds cam_bounds = get_camera_bounds(interpolated_camera);
+
+			// @Note(tkap, 01/10/2023): Draw timer
+			draw_text(format_text("%.1f", game->transient.beat_time), c_base_res * v2(0.93f, 0.05f), 15, make_color(1), e_font_small, false);
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		exp bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			{
@@ -763,7 +772,15 @@ func void render(float dt)
 		case e_state_victory:
 		{
 			draw_text("Congratulations! You win!", v2(c_half_res.x, c_base_res.y * 0.1f), 15, v4(hsv_to_rgb(game->title_color), 1), e_font_big, true);
-			draw_text(format_text("%.3f seconds", game->transient.beat_time), c_base_res * v2(0.5f, 0.2f), 15, rgb(1, 1, 1), e_font_big, true);
+			draw_text(format_text("%.1f seconds", game->transient.beat_time), c_base_res * v2(0.5f, 0.2f), 15, rgb(1, 1, 1), e_font_big, true);
+			if(game->best_time < game->transient.beat_time)
+			{
+				draw_text(format_text("(record is %.1f seconds)", game->best_time), c_base_res * v2(0.5f, 0.3f), 15, make_color(0.75f), e_font_medium, true);
+			}
+			else
+			{
+				draw_text(format_text("New record!", game->best_time), c_base_res * v2(0.5f, 0.3f), 15, make_color(0.75f), e_font_medium, true);
+			}
 			draw_text("Press Enter to keep playing", v2(c_half_res.x, c_base_res.y * 0.45f), 15, v4(0.8f), e_font_medium, true);
 			draw_text("Press R to restart", v2(c_half_res.x, c_base_res.y * 0.5f), 15, v4(0.8f), e_font_medium, true);
 			draw_text("Press Escape to exit", v2(c_half_res.x, c_base_res.y * 0.55f), 15, v4(0.8f), e_font_medium, true);
