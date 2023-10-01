@@ -413,10 +413,10 @@ func void update()
 				{
 					while(player->dig_timer >= dig_delay)
 					{
-						s_v2i hovered = get_hovered_tile(game->camera);
-						if(!is_valid_tile_index(hovered) || !game->tiles_active[hovered.y][hovered.x]) { break; }
+						s_v2i hovered = get_closest_tile_to_mouse(game->camera);
+						if(!is_valid_tile_index(hovered) || !is_tile_active(hovered)) { break; }
 						s_tile tile = game->tiles[hovered.y][hovered.x];
-						s_v2 tile_center = tile_index_to_tile_center(hovered);
+						s_v2 tile_center = get_tile_center(hovered);
 						float dist = v2_distance(player->pos, tile_center);
 						if(dist > get_dig_range()) { break; }
 
@@ -525,6 +525,31 @@ func void render(float dt)
 			interpolated_camera.center = lerp(interpolated_camera.prev_center, interpolated_camera.center, dt);
 			s_bounds cam_bounds = get_camera_bounds(interpolated_camera);
 
+			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		exp bar start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			{
+				float bar_height = 24.0f;
+				int bars = 10;
+
+				draw_texture(
+					v2(0, 0), e_layer_exp_bar, v2(c_base_res.x, bar_height), make_color(0.1f), game->sprite_data[e_sprite_rect], false, dt,
+					{.origin_offset = c_origin_topleft}
+				);
+				for(int i = 0; i < bars; i++)
+				{
+					float p = i / (float)(bars - 1);
+					draw_texture(
+						v2(c_base_res.x * p - 4, 0.0f), e_layer_exp_bar, v2(8.0f, bar_height), make_color(0.25f), game->sprite_data[e_sprite_rect], false, dt,
+						{.sublayer = 2, .effect_id = 1, .origin_offset = c_origin_topleft}
+					);
+				}
+				float exp_percent = game->transient.player.exp / (float)get_required_exp_to_level_up(game->transient.player.level);
+				draw_texture(
+						v2(0.0f, 0.0f), e_layer_exp_bar, v2(c_base_res.x * exp_percent, bar_height), rgb(0, 1, 0), game->sprite_data[e_sprite_rect], false, dt,
+						{.sublayer = 1, .effect_id = 1, .origin_offset = c_origin_topleft}
+					);
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		exp bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 			{
 				s_v2 pos = lerp(game->transient.player.prev_pos, game->transient.player.pos, dt);
 				draw_texture(pos, e_layer_player, c_player_size, v4(1,1,1,1), game->sprite_data[e_sprite_player], true, dt);
@@ -546,12 +571,12 @@ func void render(float dt)
 			int top_tile = at_least(0, floorfi(cam_bounds.top / c_tile_size));
 			int bottom_tile = at_most(c_tiles_down, ceilfi(cam_bounds.bottom / c_tile_size));
 
-			s_v2i hovered = get_hovered_tile(interpolated_camera);
+			s_v2i hovered = get_closest_tile_to_mouse(interpolated_camera);
 			for(int y = top_tile; y < bottom_tile; y++)
 			{
 				for(int x = left_tile; x < right_tile; x++)
 				{
-					if(!game->tiles_active[y][x]) { continue; }
+					if(!is_tile_active(x, y)) { continue; }
 
 					s_tile tile = game->tiles[y][x];
 					s_v4 mix_color = v4(1, 1, 1, 1);
@@ -1154,7 +1179,7 @@ func s_tile_collision get_tile_collision(s_v2 pos, s_v2 size)
 		{
 			int xx = x_index + x;
 			if(!is_valid_tile_index(xx, yy)) { continue; }
-			if(!game->tiles_active[yy][xx]) { continue; }
+			if(!is_tile_active(xx, yy)) { continue; }
 			s_v2 tile_center = v2(xx * c_tile_size, yy * c_tile_size);
 			tile_center += v2(c_tile_size) / 2;
 			if(rect_collides_rect_center(pos, size, tile_center, v2(c_tile_size)))
@@ -1198,15 +1223,6 @@ func s_v2i point_to_tile(s_v2 pos)
 	int x_index = floorfi(pos.x / (float)c_tile_size);
 	int y_index = floorfi(pos.y / (float)c_tile_size);
 	return s_v2i(x_index, y_index);
-}
-
-func s_v2 tile_index_to_tile_center(s_v2i index)
-{
-	assert(is_valid_tile_index(index));
-	s_v2 result;
-	result.x = index.x * c_tile_size + c_tile_size / 2.0f;
-	result.y = index.y * c_tile_size + c_tile_size / 2.0f;
-	return result;
 }
 
 func float get_dig_delay()
@@ -1469,4 +1485,63 @@ func void begin_winning()
 	assert(!game->transient.won);
 	game->transient.winning = true;
 	game->transient.won = true;
+}
+
+func b8 is_tile_active(int x, int y)
+{
+	assert(is_valid_tile_index(x, y));
+	return game->tiles_active[y][x];
+}
+
+func b8 is_tile_active(s_v2i index)
+{
+	return is_tile_active(index.x, index.y);
+}
+
+func s_v2i get_closest_tile_to_mouse(s_camera camera)
+{
+	// @Note(tkap, 01/10/2023): Early out for when we are directly hovering over a tile
+	s_v2i hovered = get_hovered_tile(camera);
+	if(is_valid_tile_index(hovered) && is_tile_active(hovered)) { return hovered; }
+
+	s_v2 mouse = get_world_mouse(camera);
+	int mx = floorfi(mouse.x / c_tile_size);
+	int my = floorfi(mouse.y / c_tile_size);
+
+	// @Note(tkap, 01/10/2023): Let's just check on a 17x17 tile radius
+	float shortest_dist = 999999.0f;
+	s_v2i closest = v2i(-1, -1);
+	for(int y = -8; y <= 8; y++)
+	{
+		int yy = my + y;
+		for(int x = -8; x <= 8; x++)
+		{
+			int xx = mx + x;
+			if(is_valid_tile_index(xx, yy) && is_tile_active(xx, yy))
+			{
+				float dist = v2_distance(mouse, get_tile_center(xx, yy));
+				if(dist < shortest_dist)
+				{
+					shortest_dist = dist;
+					closest = v2i(xx, yy);
+				}
+			}
+		}
+	}
+
+	return closest;
+}
+
+func s_v2 get_tile_center(int x, int y)
+{
+	assert(is_valid_tile_index(x, y));
+	return v2(
+		x * c_tile_size + c_tile_size / 2.0f,
+		y * c_tile_size + c_tile_size / 2.0f
+	);
+}
+
+func s_v2 get_tile_center(s_v2i index)
+{
+	return get_tile_center(index.x, index.y);
 }

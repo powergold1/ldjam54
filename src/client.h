@@ -22,6 +22,7 @@ enum e_layer
 	e_layer_tiles_decal,
 	e_layer_player,
 	e_layer_kill_area,
+	e_layer_exp_bar,
 };
 
 enum e_upgrade
@@ -384,7 +385,6 @@ func s_v2 get_world_mouse(s_camera camera);
 func s_v2i point_to_tile(s_v2 pos);
 func s_v2i get_hovered_tile(s_camera camera);
 func b8 is_valid_tile_index(s_v2i p);
-func s_v2 tile_index_to_tile_center(s_v2i index);
 func float get_dig_delay();
 func float get_dig_range();
 func b8** get_debug_vars();
@@ -403,6 +403,11 @@ func int get_required_exp_to_level_up(int level);
 func void add_upgrade_to_queue();
 func float get_max_y_vel();
 func void begin_winning();
+func b8 is_tile_active(int x, int y);
+func b8 is_tile_active(s_v2i index);
+func s_v2i get_closest_tile_to_mouse(s_camera camera);
+func s_v2 get_tile_center(int x, int y);
+func s_v2 get_tile_center(s_v2i index);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);
