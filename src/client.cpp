@@ -147,6 +147,12 @@ m_update_game(update_game)
 		game->sprite_data[e_sprite_clay].pos = v2i(16, 48);
 		game->sprite_data[e_sprite_clay].size = v2i(16, 16);
 
+		game->sprite_data[e_sprite_unbreakable].pos = v2i(16, 64);
+		game->sprite_data[e_sprite_unbreakable].size = v2i(16, 16);
+
+		game->sprite_data[e_sprite_emerald].pos = v2i(16, 80);
+		game->sprite_data[e_sprite_emerald].size = v2i(16, 16);
+
 		game->sprite_data[e_sprite_damage_0].pos = v2i(0, 32);
 		game->sprite_data[e_sprite_damage_0].size = v2i(16, 16);
 
@@ -253,6 +259,7 @@ func void update()
 		case e_state_game:
 		{
 			// s_rng* rng = &game->rng;
+			game->transient.beat_time += delta;
 
 			if(game->transient.in_upgrade_menu)
 			{
@@ -268,6 +275,11 @@ func void update()
 			if(is_key_pressed(g_logic_input, c_key_f3))
 			{
 				add_upgrade_to_queue();
+			}
+
+			if(!game->transient.won && is_key_pressed(g_logic_input, c_key_f4))
+			{
+				begin_winning();
 			}
 
 			if(game->in_debug_menu)
@@ -315,6 +327,12 @@ func void update()
 				}
 				player->x += get_movement_speed() * x_dir * delta;
 
+				if(game->player_bounds)
+				{
+					player->x = at_least(c_player_size.x / 2, player->x);
+					player->x = at_most(c_tiles_right * c_tile_size - c_player_size.x / 2, player->x);
+				}
+
 				// @Note(tkap, 30/09/2023): x collision
 				{
 					s_tile_collision collision = get_tile_collision(player->pos, c_player_size);
@@ -325,7 +343,7 @@ func void update()
 				}
 
 				player->vel.y += c_gravity * delta;
-				player->vel.y = at_most(1000.0f, player->vel.y);
+				player->vel.y = at_most(get_max_y_vel(), player->vel.y);
 				if(player->vel.y > 0)
 				{
 					player->jumping = false;
@@ -366,11 +384,16 @@ func void update()
 					}
 				}
 
-				if(game->player_bounds)
+				// @Note(tkap, 30/09/2023): Check for win
+				if(!game->transient.winning && !game->transient.won)
 				{
-					player->x = at_least(c_player_size.x / 2, player->x);
-					player->x = at_most(c_tiles_right * c_tile_size - c_player_size.x / 2, player->x);
+					int y_index = floorfi(player->y / (float)c_tile_size);
+					if(y_index == c_tiles_down - 2)
+					{
+						begin_winning();
+					}
 				}
+
 				game->camera.center = player->pos;
 
 				if(game->camera_bounds)
@@ -395,11 +418,15 @@ func void update()
 						if(dist > get_dig_range()) { break; }
 
 						player->dig_timer -= dig_delay;
-						game->tiles[hovered.y][hovered.x].damage_taken += 1;
-						if(game->tiles[hovered.y][hovered.x].damage_taken >= g_tile_data[tile.type].health)
+						int health = g_tile_data[tile.type].health;
+						if(health != -1)
 						{
-							add_exp(g_tile_data[tile.type].exp);
-							game->tiles_active[hovered.y][hovered.x] = false;
+							game->tiles[hovered.y][hovered.x].damage_taken += 1;
+							if(game->tiles[hovered.y][hovered.x].damage_taken >= health)
+							{
+								add_exp(g_tile_data[tile.type].exp);
+								game->tiles_active[hovered.y][hovered.x] = false;
+							}
 						}
 					}
 				}
@@ -419,6 +446,19 @@ func void update()
 
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		winning start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			{
+				if(game->transient.winning)
+				{
+					game->transient.winning_timer += delta;
+					if(game->transient.winning_timer >= 3.0f)
+					{
+						game->state = e_state_victory;
+					}
+				}
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		winning end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 			if(is_key_pressed(g_logic_input, c_key_r))
 			{
@@ -647,11 +687,28 @@ func void render(float dt)
 
 		case e_state_victory:
 		{
-			draw_text("Congratulations! You win!", v2(c_half_res.x, c_base_res.y * 0.3f), 15, v4(hsv_to_rgb(game->title_color), 1), e_font_big, true);
-			draw_text("Press Any Key to Replay", v2(c_half_res.x, c_base_res.y * 0.5f), 15, v4(1), e_font_big, true);
-			draw_text("Press Escape to Exit", v2(c_half_res.x, c_base_res.y * 0.6f), 15, v4(1), e_font_big, true);
-			draw_text("Get the source code at https://github.com/Tkap1/FIXME", v2(c_half_res.x, c_base_res.y * 0.8f), 15, make_color(0.5f), e_font_medium, true);
-			draw_text("Made Live at twitch.tv/Tkap1", v2(c_half_res.x, c_base_res.y * 0.9f), 15, make_color(0.5f), e_font_medium, true);
+			draw_text("Congratulations! You win!", v2(c_half_res.x, c_base_res.y * 0.1f), 15, v4(hsv_to_rgb(game->title_color), 1), e_font_big, true);
+			draw_text(format_text("%.3f seconds", game->transient.beat_time), c_base_res * v2(0.5f, 0.2f), 15, rgb(1, 1, 1), e_font_big, true);
+			draw_text("Press Enter to keep playing", v2(c_half_res.x, c_base_res.y * 0.45f), 15, v4(0.8f), e_font_medium, true);
+			draw_text("Press R to restart", v2(c_half_res.x, c_base_res.y * 0.5f), 15, v4(0.8f), e_font_medium, true);
+			draw_text("Press Escape to exit", v2(c_half_res.x, c_base_res.y * 0.55f), 15, v4(0.8f), e_font_medium, true);
+			draw_text("Get the source code at github.com/Tkap1/ldjam54", v2(c_half_res.x, c_base_res.y * 0.8f), 15, make_color(0.5f), e_font_medium, true);
+			draw_text("Made live at twitch.tv/Tkap1", v2(c_half_res.x, c_base_res.y * 0.9f), 15, make_color(0.5f), e_font_medium, true);
+
+			if(is_key_pressed(g_input, c_key_enter))
+			{
+				game->state = e_state_game;
+				game->transient.winning = false;
+			}
+			if(is_key_pressed(g_input, c_key_r))
+			{
+				game->state = e_state_game;
+				reset_level();
+			}
+			if(is_key_pressed(g_input, c_key_escape))
+			{
+				ExitProcess(0);
+			}
 		} break;
 
 		invalid_default_case;
@@ -1045,10 +1102,17 @@ func void reset_level()
 		for(int x = 0; x < c_tiles_right; x++)
 		{
 			game->tiles[y][x] = zero;
-			game->tiles[y][x].type = pick_from_weights(weights, e_tile_count);
-			if(rng->chance100(10))
+			if(y == c_tiles_down - 1)
 			{
-				game->tiles_active[y][x] = false;
+				game->tiles[y][x].type = e_tile_unbreakable;
+			}
+			else
+			{
+				game->tiles[y][x].type = pick_from_weights(weights, e_tile_count);
+				if(rng->chance100(10))
+				{
+					game->tiles_active[y][x] = false;
+				}
 			}
 		}
 	}
@@ -1209,6 +1273,7 @@ func b8** get_debug_vars()
 	result[1] = &game->super_dig;
 	result[2] = &game->player_bounds;
 	result[3] = &game->camera_bounds;
+	result[4] = &game->high_gravity;
 	return result;
 }
 
@@ -1225,6 +1290,9 @@ func int get_max_jumps()
 func void add_upgrade_to_queue()
 {
 	game->transient.upgrades_queued += 1;
+
+	if(game->transient.winning) { return; }
+
 	if(game->transient.upgrades_queued == 1)
 	{
 		trigger_upgrade_menu();
@@ -1383,4 +1451,17 @@ func int get_required_exp_to_level_up(int level)
 	result += (level - 1) * 10;
 	result = powf(result, 1.1f);
 	return ceilfi(result);
+}
+
+func float get_max_y_vel()
+{
+	return 1000.0f * (game->high_gravity ? 5 : 1);
+}
+
+func void begin_winning()
+{
+	assert(!game->transient.winning);
+	assert(!game->transient.won);
+	game->transient.winning = true;
+	game->transient.won = true;
 }

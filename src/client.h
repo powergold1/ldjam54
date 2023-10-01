@@ -6,6 +6,8 @@ enum e_sprite
 	e_sprite_dirt,
 	e_sprite_stone,
 	e_sprite_clay,
+	e_sprite_emerald,
+	e_sprite_unbreakable,
 	e_sprite_damage_0,
 	e_sprite_damage_1,
 	e_sprite_damage_2,
@@ -168,6 +170,8 @@ enum e_tile
 	e_tile_dirt,
 	e_tile_stone,
 	e_tile_clay,
+	e_tile_emerald,
+	e_tile_unbreakable,
 	e_tile_count,
 };
 
@@ -208,6 +212,24 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 4,
 		.sprite = e_sprite_clay,
 		.health = 6,
+	},
+
+	// @Note(tkap, 30/09/2023): emerald
+	{
+		.weight = 3,
+		.weight_add = 0,
+		.exp = 20,
+		.sprite = e_sprite_emerald,
+		.health = 1,
+	},
+
+	// @Note(tkap, 30/09/2023): unbreakable
+	{
+		.weight = 10,
+		.weight_add = 0,
+		.exp = 0,
+		.sprite = e_sprite_unbreakable,
+		.health = -1,
 	},
 };
 
@@ -255,12 +277,16 @@ struct s_tile_collision
 struct s_game_transient
 {
 	b8 in_upgrade_menu;
+	b8 winning;
+	b8 won;
 	int upgrade_index;
 	s_sarray<int, 3> upgrade_choices;
 	int upgrades_chosen[e_upgrade_count];
 	s_player player;
 	float kill_area_timer;
+	float winning_timer;
 	int upgrades_queued;
+	f64 beat_time;
 };
 
 struct s_game
@@ -270,8 +296,10 @@ struct s_game
 	b8 reset_game;
 	b8 high_speed;
 	b8 player_bounds;
+	b8 high_gravity;
 	b8 super_dig;
 	b8 camera_bounds;
+	f64 best_time;
 
 	s_game_transient transient;
 
@@ -362,6 +390,8 @@ func int pick_from_weights(s64* weights, int count);
 func void add_exp(int exp);
 func int get_required_exp_to_level_up(int level);
 func void add_upgrade_to_queue();
+func float get_max_y_vel();
+func void begin_winning();
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

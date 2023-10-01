@@ -48,7 +48,7 @@ global constexpr float c_kill_area_delay = 1;
 global constexpr int c_player_health = 3;
 
 global constexpr char* debug_text[] = {
-	"High speed", "Super dig", "Player bounds", "Camera bounds",
+	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity",
 };
 
 global constexpr float c_depth_goals[] = {
