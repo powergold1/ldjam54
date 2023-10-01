@@ -7,6 +7,7 @@ enum e_sprite
 	e_sprite_stone,
 	e_sprite_clay,
 	e_sprite_emerald,
+	e_sprite_ruby,
 	e_sprite_unbreakable,
 	e_sprite_damage_0,
 	e_sprite_damage_1,
@@ -171,6 +172,7 @@ enum e_tile
 	e_tile_stone,
 	e_tile_clay,
 	e_tile_emerald,
+	e_tile_ruby,
 	e_tile_unbreakable,
 	e_tile_count,
 };
@@ -178,7 +180,7 @@ enum e_tile
 struct s_tile_data
 {
 	s64 weight;
-	s64 weight_add;
+	float weight_add;
 	int exp;
 	int sprite;
 	int health;
@@ -217,16 +219,25 @@ global constexpr s_tile_data g_tile_data[] = {
 	// @Note(tkap, 30/09/2023): emerald
 	{
 		.weight = 3,
-		.weight_add = 0,
+		.weight_add = 0.2f,
 		.exp = 20,
 		.sprite = e_sprite_emerald,
+		.health = 1,
+	},
+
+	// @Note(tkap, 30/09/2023): ruby
+	{
+		.weight = 1,
+		.weight_add = 0.1f,
+		.exp = 40,
+		.sprite = e_sprite_ruby,
 		.health = 1,
 	},
 
 	// @Note(tkap, 30/09/2023): unbreakable
 	{
 		.weight = 10,
-		.weight_add = 0,
+		.weight_add = 1.5f,
 		.exp = 0,
 		.sprite = e_sprite_unbreakable,
 		.health = -1,

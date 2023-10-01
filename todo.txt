@@ -5,11 +5,16 @@ gemstones (just a big exp, easy to break block)
 portals that teleport you down?? (and then up when going in reverse)
 dash upgrade? breaks blocks (only sideways?)
 make weight_add a float so we can increase frequency by height buy very slowly
+buffs like: every second, fire a block breaking laser or whatever
+best time
+exp bar
+hot ui system
 
 polish:
 	particles
 	sounds
 	more gemstones
+	find closest tile to mouse and mine that
 
 probably not:
 	after reaching the bottom, you have to go up???? it makes +1 jump upgrades useful!!

@@ -153,6 +153,9 @@ m_update_game(update_game)
 		game->sprite_data[e_sprite_emerald].pos = v2i(16, 80);
 		game->sprite_data[e_sprite_emerald].size = v2i(16, 16);
 
+		game->sprite_data[e_sprite_ruby].pos = v2i(16, 96);
+		game->sprite_data[e_sprite_ruby].size = v2i(16, 16);
+
 		game->sprite_data[e_sprite_damage_0].pos = v2i(0, 32);
 		game->sprite_data[e_sprite_damage_0].size = v2i(16, 16);
 
@@ -555,6 +558,7 @@ func void render(float dt)
 					float mix_weight = 0;
 					if(hovered == v2i(x, y))
 					{
+						printf("%i\n", tile.type);
 						mix_weight = 0.5f;
 					}
 					draw_texture(
@@ -645,9 +649,10 @@ func void render(float dt)
 						}
 					}
 
+					// @Fixme(tkap, 01/10/2023): good ui system
 					if(
 						is_key_pressed(g_input, c_key_enter) ||
-						(upgrade_hovered && is_key_pressed(g_input, c_left_mouse))
+						(upgrade_hovered && is_key_released(g_input, c_left_mouse))
 					)
 					{
 						apply_upgrade(game->transient.upgrade_choices[selected]);
@@ -1407,7 +1412,7 @@ func s64* get_tile_weights_for_y(int y, int count)
 	s64* weights = (s64*)la_get(g_platform_data->frame_arena, sizeof(s64) * count);
 	for(int tile_i = 0; tile_i < count; tile_i++)
 	{
-		s64 weight = at_least((s64)0, g_tile_data[tile_i].weight + g_tile_data[tile_i].weight_add * y);
+		s64 weight = at_least((s64)0, (s64)floorfi(g_tile_data[tile_i].weight + g_tile_data[tile_i].weight_add * y));
 		weights[tile_i] = weight;
 	}
 	return weights;
