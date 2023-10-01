@@ -332,7 +332,7 @@ func void update()
 			{
 				float speed = get_kill_area_speed();
 				game->kill_area_bottom += delta * speed;
-				game->transient.kill_area_speed += 0.5f * delta;
+				game->transient.kill_area_speed += 0.25f * delta;
 			}
 			game->transient.kill_area_timer = at_most(c_kill_area_delay + delta, game->transient.kill_area_timer + delta);
 
@@ -595,6 +595,23 @@ func void update()
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update broken tiles start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+			{
+				foreach(tile_i, tile, game->transient.broken_tiles)
+				{
+					tile->prev_pos = tile->pos;
+					tile->pos += tile->dir * 100 * delta;
+					tile->pos.y += tile->gravity * delta;
+					tile->gravity += 1000 * delta;
+					tile->time += delta;
+					if(tile->time >= 1)
+					{
+						game->transient.broken_tiles.remove_and_swap(tile_i);
+					}
+				}
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update broken tiles end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		winning start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 			{
 				if(game->transient.winning)
@@ -630,6 +647,7 @@ func void update()
 	// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update particles start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 	foreach(particle_i, particle, game->particles)
 	{
+		particle->prev_pos = particle->pos;
 		particle->time += delta;
 		particle->pos += particle->dir * particle->speed * delta;
 		if(particle->time >= particle->duration)
@@ -792,6 +810,17 @@ func void render(float dt)
 				}
 			}
 
+			// @Note(tkap, 01/10/2023): Draw broken tiles
+			foreach_raw(tile_i, tile, game->transient.broken_tiles)
+			{
+				s_v2 pos = lerp(tile.prev_pos, tile.pos, dt);
+				draw_texture2(
+					pos, e_layer_broken_tiles, v2(c_tile_size / c_tile_pieces), make_color(c_tile_brightness),
+					game->sprite_data[g_tile_data[tile.type].sprite], tile.sub_size, tile.index,
+					true, dt, {.origin_offset = c_origin_topleft}
+				);
+			}
+
 			// @Note(tkap, 01/10/2023): Portals
 			foreach_raw(portal_i, portal, game->transient.portals)
 			{
@@ -913,6 +942,7 @@ func void render(float dt)
 
 	foreach_raw(particle_i, particle, game->particles)
 	{
+		s_v2 pos = lerp(particle.prev_pos, particle.pos, dt);
 		s_v4 color = particle.color;
 		float percent = (particle.time / particle.duration);
 		float percent_left = 1.0f - percent;
@@ -925,7 +955,7 @@ func void render(float dt)
 		{
 			radius *= range_lerp(percent, 0, 1, 1, 0.2f);
 		}
-		draw_circle_p(particle.pos, e_layer_particles, radius, color, &interpolated_camera);
+		draw_circle_p(pos, e_layer_particles, radius, color, &interpolated_camera);
 	}
 
 	{
@@ -1281,6 +1311,7 @@ func void spawn_particles(int count, s_particle_spawn_data data)
 		p.speed = data.speed * (1 - data.speed_rand * game->rng.randf32());
 		p.radius = data.radius * (1 - data.radius_rand * game->rng.randf32());
 		p.pos = data.pos;
+		p.prev_pos = p.pos;
 
 		float foo = (float)game->rng.randf2() * data.angle_rand * tau;
 		float angle = data.angle + foo;
@@ -2088,6 +2119,25 @@ func void damage_tile(s_v2i index, int damage)
 		);
 		play_sound_if_supported(g_tile_data[tile.type].break_sound);
 		game->tiles_active[index.y][index.x] = false;
+
+		s_v2 tile_pos = get_tile_pos(index);
+		s_v2 tile_center = get_tile_center(index);
+		for(int y = 0; y < c_tile_pieces; y++)
+		{
+			for(int x = 0; x < c_tile_pieces; x++)
+			{
+				s_broken_tile piece = zero;
+				piece.type = tile.type;
+				piece.pos = tile_pos + v2(x * (c_tile_size / c_tile_pieces), y * (c_tile_size / c_tile_pieces));
+				piece.prev_pos = piece.pos;
+				piece.index = v2i(x, y);
+				piece.sub_size = v2(1.0f / (float)c_tile_pieces);
+				s_v2 center = piece.pos + v2(c_tile_size / (c_tile_pieces * 2));
+				piece.dir = v2_normalized(center - tile_center) * game->rng.randf32();
+				game->transient.broken_tiles.add_checked(piece);
+			}
+		}
+
 	}
 	else
 	{

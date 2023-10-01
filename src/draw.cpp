@@ -76,6 +76,27 @@ func void draw_texture(s_v2 pos, int layer, s_v2 size, s_v4 color, s_sprite_data
 	transforms.add(t);
 }
 
+func void draw_texture2(s_v2 pos, int layer, s_v2 size, s_v4 color, s_sprite_data sprite_data, s_v2 sub_size, s_v2i index, b8 use_camera, float dt, s_transform t = zero)
+{
+	t.layer = layer;
+	t.texture_id = (int)game->atlas.id;
+	t.pos = pos;
+	t.draw_size = size;
+	if(use_camera)
+	{
+		s_v2 cam_center = lerp(game->camera.prev_center, game->camera.center, dt);
+		t.pos.x = c_base_res.x / 2 - (cam_center.x - t.pos.x);
+		t.pos.y = c_base_res.y / 2 - (cam_center.y - t.pos.y);
+	}
+	t.color = color;
+	s_v2 foo = v2(sprite_data.size) / v2(c_atlas_size);
+	t.uv_min = v2(sprite_data.pos.x / (float)c_atlas_size, sprite_data.pos.y / (float)c_atlas_size);
+	t.uv_min += sub_size * foo * v2(index);
+	t.uv_max = t.uv_min + sub_size * foo;
+	t.mix_color = v41f(1);
+	transforms.add(t);
+}
+
 func void draw_fbo(u32 texture, s_transform t = zero)
 {
 	t.layer = e_layer_particles;

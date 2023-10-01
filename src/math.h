@@ -48,6 +48,11 @@ func constexpr s_v2 v2(T v)
 	return result;
 }
 
+func constexpr s_v2 v2(s_v2i v)
+{
+	return v2(v.x, v.y);
+}
+
 func s_v2 v22i(int x, int y)
 {
 	s_v2 result;
@@ -307,6 +312,14 @@ func s_v2 operator/(s_v2 a, float b)
 	s_v2 result;
 	result.x = a.x / b;
 	result.y = a.y / b;
+	return result;
+}
+
+func s_v2 operator/(s_v2 a, s_v2 b)
+{
+	s_v2 result;
+	result.x = a.x / b.x;
+	result.y = a.y / b.y;
 	return result;
 }
 

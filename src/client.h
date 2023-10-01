@@ -20,6 +20,7 @@ enum e_layer
 	e_layer_background,
 	e_layer_tiles,
 	e_layer_tiles_decal,
+	e_layer_broken_tiles,
 	e_layer_portal,
 	e_layer_player,
 	e_layer_particles,
@@ -218,6 +219,7 @@ struct s_particle
 	float time;
 	float duration;
 	float speed;
+	s_v2 prev_pos;
 	s_v2 pos;
 	s_v2 dir;
 	float radius;
@@ -398,6 +400,18 @@ struct s_tile_collision
 	s_v2i index;
 };
 
+struct s_broken_tile
+{
+	int type;
+	float time;
+	s_v2 prev_pos;
+	s_v2 pos;
+	s_v2 sub_size;
+	s_v2 dir;
+	float gravity;
+	s_v2i index;
+};
+
 struct s_game_transient
 {
 	b8 in_upgrade_menu;
@@ -408,6 +422,7 @@ struct s_game_transient
 	int upgrades_chosen[e_upgrade_count];
 	s_player player;
 	s_sarray<s_portal, 128> portals;
+	s_sarray<s_broken_tile, 1024> broken_tiles;
 	float kill_area_timer;
 	float kill_area_speed;
 	float winning_timer;

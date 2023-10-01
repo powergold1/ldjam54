@@ -3,7 +3,6 @@ we still have that ui bug where the first upgrade is not always the default. cri
 buffs like: every second, fire a block breaking laser or whatever
 
 polish:
-	some block dead animation instead of just disappearing
 	upgrade/level sound
 	cool cursor
 	sound when moving through upgrade options
