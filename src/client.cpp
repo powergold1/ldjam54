@@ -667,7 +667,7 @@ func void render(float dt)
 					base_pos.y -= spacing * 1.5f;
 
 					draw_texture(
-						c_half_res, 10, c_half_res, v4(0.1f,0.1f,0.1f,1), game->sprite_data[e_sprite_rect], false, dt
+						c_half_res, 10, c_half_res, rgb(0.1f, 0.1f, 0.1f), game->sprite_data[e_sprite_rect], false, dt
 					);
 
 					if(is_key_pressed(g_input, c_key_up) || is_key_pressed(g_input, c_key_w))
