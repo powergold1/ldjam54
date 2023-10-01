@@ -342,9 +342,25 @@ func void update()
 
 				int how_many_blocks_can_dash_break = get_how_many_blocks_can_dash_break();
 				float dash_cd = get_dash_cd();
-				b8 can_dash = player->state != e_player_state_dashing && player->dash_cd_time >= dash_cd;
-				if(can_dash && game->transient.upgrades_chosen[e_upgrade_dash] > 0 && is_key_pressed(g_logic_input, c_key_f))
+				b8 can_dash = player->state != e_player_state_dashing && player->dash_cd_time >= dash_cd &&
+					game->transient.upgrades_chosen[e_upgrade_dash] > 0;
+				if(can_dash && !game->transient.notified_of_dash_refresh)
 				{
+					game->transient.notified_of_dash_refresh = true;
+					spawn_particles(64, {
+						.speed = 500.0f,
+						.speed_rand = 0.2f,
+						.radius = 32.0f,
+						.duration = 0.5f,
+						.angle = 0,
+						.angle_rand = 1,
+						.pos = player->pos,
+						.color = rgb(0.5f, 0.3f, 0.1f),
+					});
+				}
+				if(can_dash && is_key_pressed(g_logic_input, c_key_f))
+				{
+					game->transient.notified_of_dash_refresh = false;
 					player->dash_cd_time = 0;
 					player->state = e_player_state_dashing;
 					player->dash_time = 0;
@@ -815,7 +831,7 @@ func void render(float dt)
 			{
 				s_v2 pos = lerp(tile.prev_pos, tile.pos, dt);
 				draw_texture2(
-					pos, e_layer_broken_tiles, v2(c_tile_size / c_tile_pieces), make_color(c_tile_brightness),
+					pos, e_layer_broken_tiles, v2(c_tile_size / c_tile_pieces), v4(c_tile_brightness, c_tile_brightness, c_tile_brightness, 0.75f),
 					game->sprite_data[g_tile_data[tile.type].sprite], tile.sub_size, tile.index,
 					true, dt, {.origin_offset = c_origin_topleft}
 				);

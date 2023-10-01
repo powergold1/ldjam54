@@ -417,6 +417,7 @@ struct s_game_transient
 	b8 in_upgrade_menu;
 	b8 winning;
 	b8 won;
+	b8 notified_of_dash_refresh;
 	int upgrade_index;
 	s_sarray<int, 3> upgrade_choices;
 	int upgrades_chosen[e_upgrade_count];
