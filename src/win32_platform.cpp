@@ -158,8 +158,12 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 
 		case WM_SIZE:
 		{
-			g_window.width = LOWORD(lparam);
-			g_window.height = HIWORD(lparam);
+			int width = LOWORD(lparam);
+			int height = HIWORD(lparam);
+			if(width <= 0 || height <= 0) { break; }
+
+			g_window.width = width;
+			g_window.height = height;
 			g_platform_data.window_resized = true;
 		} break;
 
