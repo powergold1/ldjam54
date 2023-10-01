@@ -1999,7 +1999,7 @@ func s_ui_state add_label(s_label_group* group, char* text)
 	}
 	if(g_ui.pressed.id == id)
 	{
-		color = color = rgb(0.7f, 0.7f, 0);
+		color = rgb(0.7f, 0.7f, 0);
 		if(is_key_released(g_input, c_left_mouse))
 		{
 			if(hovered)
