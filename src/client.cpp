@@ -347,7 +347,42 @@ func void update()
 				{
 					x_dir = 1;
 				}
-				player->x += get_movement_speed() * x_dir * delta;
+
+				int how_many_blocks_can_dash_break = get_how_many_blocks_can_dash_break();
+
+				float dash_cd = get_dash_cd();
+				b8 can_dash = player->state != e_player_state_dashing && player->dash_cd_time >= dash_cd;
+				if(can_dash && game->transient.upgrades_chosen[e_upgrade_dash] > 0 && is_key_pressed(g_logic_input, c_key_f))
+				{
+					player->dash_cd_time = 0;
+					player->state = e_player_state_dashing;
+					player->dash_time = 0;
+					player->dash_dir = v2_normalized(get_world_mouse(game->camera) - player->pos);
+					player->blocks_broken_with_dash = 0;
+					player->vel.y = 0;
+				}
+
+				b8 dashing = player->state == e_player_state_dashing;
+
+				if(dashing)
+				{
+					x_dir = player->dash_dir.x > 0.0f ? 1.0f : -1.0f;
+					player->x += player->dash_dir.x * c_dash_speed * delta;
+					player->dash_time += delta;
+					if(player->dash_time >= c_dash_duration)
+					{
+						player->state = e_player_state_default;
+					}
+				}
+				else
+				{
+					player->x += get_movement_speed() * x_dir * delta;
+				}
+
+				if(!dashing)
+				{
+					player->dash_cd_time = at_most(dash_cd + delta, player->dash_cd_time + delta);
+				}
 
 				if(game->player_bounds)
 				{
@@ -360,22 +395,39 @@ func void update()
 					s_tile_collision collision = get_tile_collision(player->pos, c_player_size);
 					if(collision.collided)
 					{
-						player->x = collision.tile_center.x - x_dir * (c_tile_size / 2 + c_player_size.x / 2) - x_dir * 0.01f;
+						s_v2 center = get_tile_center(collision.index);
+						if(dashing)
+						{
+							int type = game->tiles[collision.index.y][collision.index.x].type;
+							if(g_tile_data[type].health != -1)
+							{
+								damage_tile(collision.index, 9999);
+								player->blocks_broken_with_dash += 1;
+								if(player->blocks_broken_with_dash >= how_many_blocks_can_dash_break)
+								{
+									player->state = e_player_state_default;
+								}
+							}
+						}
+						player->x = center.x - x_dir * (c_tile_size / 2 + c_player_size.x / 2) - x_dir * 0.01f;
 					}
 				}
 
-				player->vel.y += c_gravity * delta;
-				player->vel.y = at_most(get_max_y_vel(), player->vel.y);
-				if(player->vel.y > 0)
+				if(!dashing)
 				{
-					player->jumping = false;
+					player->vel.y += c_gravity * delta;
+					player->vel.y = at_most(get_max_y_vel(), player->vel.y);
+					if(player->vel.y > 0)
+					{
+						player->state = e_player_state_default;
+					}
 				}
 
-				if(player->jumping)
+				if(player->state == e_player_state_jumping)
 				{
 					if(!is_key_down(g_logic_input, c_key_space))
 					{
-						player->jumping = false;
+						player->state = e_player_state_default;
 						player->vel.y *= 0.5f;
 					}
 				}
@@ -384,25 +436,53 @@ func void update()
 				if(can_jump && is_key_pressed(g_logic_input, c_key_space))
 				{
 					player->jumps_done += 1;
-					player->jumping = true;
+					player->state = e_player_state_jumping;
 					player->vel.y = c_gravity * -0.42f;
 				}
 
-				player->y += player->vel.y * delta;
+				if(dashing)
+				{
+					player->y += player->dash_dir.y * c_dash_speed * delta;
+				}
+				else
+				{
+					player->y += player->vel.y * delta;
+				}
 
 				// @Note(tkap, 30/09/2023): y collision
 				{
 					int y_dir = player->vel.y > 0 ? 1 : -1;
+					if(dashing)
+					{
+						y_dir = player->dash_dir.y > 0 ? 1 : -1;
+					}
 					s_tile_collision collision = get_tile_collision(player->pos, c_player_size);
 					if(collision.collided)
 					{
-						player->jumping = false;
-						player->y = collision.tile_center.y - y_dir * (c_tile_size / 2 + c_player_size.y / 2) - y_dir * 0.01f;
-						player->vel.y = 0;
-						if(y_dir == 1)
+						s_v2 center = get_tile_center(collision.index);
+						if(dashing)
 						{
-							player->jumps_done = 0;
+							int type = game->tiles[collision.index.y][collision.index.x].type;
+							if(g_tile_data[type].health != -1)
+							{
+								damage_tile(collision.index, 9999);
+								player->blocks_broken_with_dash += 1;
+								if(player->blocks_broken_with_dash >= how_many_blocks_can_dash_break)
+								{
+									player->state = e_player_state_default;
+								}
+							}
 						}
+						else
+						{
+							player->state = e_player_state_default;
+							player->vel.y = 0;
+							if(y_dir == 1)
+							{
+								player->jumps_done = 0;
+							}
+						}
+						player->y = center.y - y_dir * (c_tile_size / 2 + c_player_size.y / 2) - y_dir * 0.01f;
 					}
 				}
 
@@ -460,28 +540,7 @@ func void update()
 						int health = g_tile_data[tile.type].health;
 						if(health != -1)
 						{
-							game->tiles[hovered.y][hovered.x].damage_taken += 1;
-							if(game->tiles[hovered.y][hovered.x].damage_taken >= health)
-							{
-								add_exp(g_tile_data[tile.type].exp);
-
-								do_tile_particles(
-									random_point_in_rect_topleft(get_tile_pos(hovered), v2(c_tile_size), &game->rng),
-									tile.type, 1
-								);
-								play_sound_if_supported(g_tile_data[tile.type].break_sound);
-								game->tiles_active[hovered.y][hovered.x] = false;
-							}
-							else
-							{
-								s_v2 pos;
-								if(get_hovered_tile(game->camera) == hovered) { pos = get_world_mouse(game->camera); }
-								else { pos = random_point_in_rect_topleft(get_tile_pos(hovered), v2(c_tile_size), &game->rng); }
-								do_tile_particles(
-									pos, tile.type, 0
-								);
-								play_sound_if_supported(e_sound_dig);
-							}
+							damage_tile(hovered, 1);
 						}
 					}
 				}
@@ -1283,7 +1342,7 @@ func s_tile_collision get_tile_collision(s_v2 pos, s_v2 size)
 			if(rect_collides_rect_center(pos, size, tile_center, v2(c_tile_size)))
 			{
 				result.collided = true;
-				result.tile_center = tile_center;
+				result.index = v2i(xx, yy);
 				return result;
 			}
 		}
@@ -1407,6 +1466,16 @@ func int get_max_jumps()
 	return result;
 }
 
+func int get_how_many_blocks_can_dash_break()
+{
+	int result = 0;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_dash]; i++)
+	{
+		result += (int)get_upgrade_value(e_upgrade_dash, i);
+	}
+	return result;
+}
+
 func void add_upgrade_to_queue()
 {
 	game->transient.upgrades_queued += 1;
@@ -1430,6 +1499,7 @@ func void trigger_upgrade_menu()
 	s_sarray<int, e_upgrade_count> available_upgrades = zero;
 	for(int upgrade_i = 0; upgrade_i < e_upgrade_count; upgrade_i++)
 	{
+		if(upgrade_i == e_upgrade_dash_cd && game->transient.upgrades_chosen[e_upgrade_dash] <= 0) { continue; }
 		available_upgrades.add(upgrade_i);
 	}
 
@@ -1493,6 +1563,23 @@ func char* get_upgrade_description(int id, int level)
 			return format_text("The void moves %0.f%% slower", value);
 		} break;
 
+		case e_upgrade_dash:
+		{
+			if(level == 0)
+			{
+				return format_text("Press F to dash, breaking %0.0f blocks", value);
+			}
+			else
+			{
+				return format_text("Dash can break an extra block");
+			}
+		} break;
+
+		case e_upgrade_dash_cd:
+		{
+			return format_text("-%.0f%% dash cooldown", value);
+		} break;
+
 		invalid_default_case;
 	}
 	return null;
@@ -1511,10 +1598,12 @@ func float get_upgrade_value(int id, int level)
 		{
 			return 30.0f + 5 * level;
 		} break;
+
 		case e_upgrade_movement_speed:
 		{
 			return 25.0f + 5 * level;
 		} break;
+
 		case e_upgrade_health:
 		{
 			return 1;
@@ -1528,6 +1617,17 @@ func float get_upgrade_value(int id, int level)
 		case e_upgrade_slower_kill_area:
 		{
 			return 5;
+		} break;
+
+		case e_upgrade_dash:
+		{
+			if(level == 0) { return 3; }
+			else { return 1; }
+		} break;
+
+		case e_upgrade_dash_cd:
+		{
+			return 10;
 		} break;
 
 		invalid_default_case;
@@ -1907,6 +2007,52 @@ func float get_kill_area_speed()
 	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_slower_kill_area]; i++)
 	{
 		dec -= get_upgrade_value(e_upgrade_slower_kill_area, i) / 100;
+	}
+	dec = at_least(0.0f, dec);
+	result *= dec;
+
+	return result;
+}
+
+func void damage_tile(s_v2i index, int damage)
+{
+	assert(is_valid_tile_index(index));
+	assert(is_tile_active(index));
+	s_tile tile = game->tiles[index.y][index.x];
+	int health = g_tile_data[tile.type].health;
+	assert(health > 0);
+	game->tiles[index.y][index.x].damage_taken += damage;
+	if(game->tiles[index.y][index.x].damage_taken >= health)
+	{
+		add_exp(g_tile_data[tile.type].exp);
+
+		do_tile_particles(
+			random_point_in_rect_topleft(get_tile_pos(index), v2(c_tile_size), &game->rng),
+			tile.type, 1
+		);
+		play_sound_if_supported(g_tile_data[tile.type].break_sound);
+		game->tiles_active[index.y][index.x] = false;
+	}
+	else
+	{
+		s_v2 pos;
+		if(get_hovered_tile(game->camera) == index) { pos = get_world_mouse(game->camera); }
+		else { pos = random_point_in_rect_topleft(get_tile_pos(index), v2(c_tile_size), &game->rng); }
+		do_tile_particles(
+			pos, tile.type, 0
+		);
+		play_sound_if_supported(e_sound_dig);
+	}
+}
+
+func float get_dash_cd()
+{
+	float result = c_dash_cd;
+
+	float dec = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_dash_cd]; i++)
+	{
+		dec -= get_upgrade_value(e_upgrade_dash_cd, i) / 100;
 	}
 	dec = at_least(0.0f, dec);
 	result *= dec;

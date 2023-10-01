@@ -44,6 +44,8 @@ enum e_upgrade
 	e_upgrade_health,
 	e_upgrade_extra_jump,
 	e_upgrade_slower_kill_area,
+	e_upgrade_dash,
+	e_upgrade_dash_cd,
 	e_upgrade_count,
 };
 
@@ -189,14 +191,25 @@ struct s_delayed_sound
 	s_sound sound;
 };
 
+enum e_player_state
+{
+	e_player_state_default,
+	e_player_state_jumping,
+	e_player_state_dashing,
+};
+
 struct s_player : s_entity
 {
-	b8 jumping;
+	e_player_state state;
 	int jumps_done;
 	int level;
 	int exp;
 	int damage_taken;
+	int blocks_broken_with_dash;
 	float dig_timer;
+	float dash_time;
+	float dash_cd_time;
+	s_v2 dash_dir;
 	s_v2 vel;
 };
 
@@ -342,7 +355,7 @@ struct s_camera
 struct s_tile_collision
 {
 	b8 collided;
-	s_v2 tile_center;
+	s_v2i index;
 };
 
 struct s_game_transient
@@ -492,6 +505,9 @@ func void ui_request_active(u32 id);
 func void ui_request_selected(u32 id, int index);
 func s_v2 get_camera_wanted_center(s_player player);
 func float get_kill_area_speed();
+func void damage_tile(s_v2i index, int damage);
+func int get_how_many_blocks_can_dash_break();
+func float get_dash_cd();
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

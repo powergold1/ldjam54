@@ -1,5 +1,11 @@
-dash upgrade? breaks blocks (only sideways?)
+
+we still have that ui bug where the first upgrade is not always the default. cringe!!
+
+some indicator of whether we can dash or not
+	or some visual effect when dash cooldown is refreshed
+
 buffs like: every second, fire a block breaking laser or whatever
+show controls in game!!
 
 polish:
 	particles
@@ -19,3 +25,8 @@ polish:
 
 probably not:
 	after reaching the bottom, you have to go up???? it makes +1 jump upgrades useful!!
+
+we stop for 1 frame when breaking a block while dashing. to fix this we need a list of all colliding tiles, not just 1. then we stop movement
+	if any of the colliding tiles is an unbreakable block, otherwise we keep going.
+	the bug is that when colliding with 2 tiles, one of them being unbreakable and the other breakable, if we only get the breakable collision,
+	then we will not reset the movement, which will put us inside the breakable block

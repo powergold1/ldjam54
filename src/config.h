@@ -52,6 +52,9 @@ global constexpr float c_tile_brightness = 0.6f;
 global constexpr float c_player_brightness = 0.6f;
 global constexpr float c_light_brightness = 0.15f;
 global constexpr float c_portal_brightness = 0.25f;
+global constexpr float c_dash_duration = 0.5f;
+global constexpr float c_dash_speed = 1000;
+global constexpr float c_dash_cd = 3;
 
 global constexpr char* debug_text[] = {
 	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity", "No kill area",
