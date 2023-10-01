@@ -1,16 +1,8 @@
 
 we still have that ui bug where the first upgrade is not always the default. cringe!!
 buffs like: every second, fire a block breaking laser or whatever
-show controls in game!!
-make kill area not a disgusting white quad
 
 polish:
-	particles
-	sounds
-	more gemstones
-	find closest tile to mouse and mine that
-	exp bar flash after getting exp
-	background
 	some block dead animation instead of just disappearing
 	upgrade/level sound
 	cool cursor

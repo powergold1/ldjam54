@@ -695,9 +695,15 @@ func void render(float dt)
 					);
 				}
 				float exp_percent = game->transient.player.exp / (float)get_required_exp_to_level_up(game->transient.player.level);
+				float mix_weight = 0;
+				float elapsed = game->total_time - game->transient.exp_gained_time;
+				if(elapsed <= 1)
+				{
+					mix_weight = 1 - powf(elapsed, 0.75f);
+				}
 				draw_texture(
 						v2(0.0f, 0.0f), e_layer_exp_bar, v2(c_base_res.x * exp_percent, bar_height), rgb(0x41ACBF), game->sprite_data[e_sprite_rect], false, dt,
-						{.sublayer = 1, .origin_offset = c_origin_topleft}
+						{.sublayer = 1, .mix_weight = mix_weight, .origin_offset = c_origin_topleft}
 					);
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		exp bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1717,6 +1723,7 @@ func void add_exp(int exp)
 	s_player* player = &game->transient.player;
 	player->exp += exp;
 	int required_exp = get_required_exp_to_level_up(player->level);
+	game->transient.exp_gained_time = game->total_time;
 	while(player->exp >= required_exp)
 	{
 		player->level += 1;

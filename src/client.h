@@ -411,6 +411,7 @@ struct s_game_transient
 	float kill_area_timer;
 	float kill_area_speed;
 	float winning_timer;
+	float exp_gained_time;
 	int upgrades_queued;
 	f64 beat_time;
 };
