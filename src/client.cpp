@@ -328,7 +328,8 @@ func void update()
 
 			if(!game->no_kill_area)
 			{
-				game->kill_area_bottom += delta * 80;
+				game->kill_area_bottom += delta * game->transient.kill_area_speed;
+				game->transient.kill_area_speed += 0.5f * delta;
 			}
 			game->transient.kill_area_timer = at_most(c_kill_area_delay + delta, game->transient.kill_area_timer + delta);
 
@@ -1246,6 +1247,7 @@ func void reset_level()
 	player->pos.y = -500;
 	player->prev_pos = player->pos;
 	player->level = 1;
+	game->transient.kill_area_speed = 80;
 	game->camera.center = player->pos;
 	game->camera.prev_center = game->camera.center;
 	game->kill_area_bottom = -900;

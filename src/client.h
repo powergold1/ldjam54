@@ -355,6 +355,7 @@ struct s_game_transient
 	s_player player;
 	s_sarray<s_portal, 128> portals;
 	float kill_area_timer;
+	float kill_area_speed;
 	float winning_timer;
 	int upgrades_queued;
 	f64 beat_time;
