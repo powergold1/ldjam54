@@ -123,6 +123,7 @@ struct s_ui
 struct s_label_group
 {
 	int default_selected;
+	float spacing;
 	s_v2 pos;
 	e_font font_type;
 	s_sarray<u32, 8> ids;
@@ -475,7 +476,7 @@ func s_v2 get_tile_pos(s_v2i index);
 func void do_normal_render(u32 texture, int render_type);
 func void do_tile_particles(s_v2 pos, int tile_type, int type);
 func void recreate_particle_framebuffer(int width, int height);
-func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected);
+func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected, float spacing);
 func s_ui_state add_label(s_label_group* group, char* text);
 func int end_label_group(s_label_group* group);
 func u32 hash(const char* text);

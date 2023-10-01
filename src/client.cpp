@@ -676,16 +676,14 @@ func void render(float dt)
 			{
 				if(game->transient.in_upgrade_menu)
 				{
-					s_v2 base_pos = c_half_res;
 					e_font font_type = e_font_medium;
 					float spacing = game->font_arr[font_type].size * 1.2f;
-					base_pos.y -= spacing * 1.5f;
 
 					draw_texture(
 						c_half_res, 10, c_half_res, rgb(0.1f, 0.1f, 0.1f), game->sprite_data[e_sprite_rect], false, dt
 					);
 
-					s_label_group group = begin_label_group(c_half_res, e_font_medium, game->transient.upgrade_index);
+					s_label_group group = begin_label_group(c_half_res - v2(0.0f, spacing * 1.5f - game->font_arr[font_type].size / 2), font_type, game->transient.upgrade_index, spacing);
 					for(int upgrade_i = 0; upgrade_i < 3; upgrade_i++)
 					{
 						int upgrade_id = game->transient.upgrade_choices[upgrade_i];
@@ -1672,12 +1670,13 @@ func void recreate_particle_framebuffer(int width, int height)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected)
+func s_label_group begin_label_group(s_v2 pos, e_font font_type, int selected, float spacing)
 {
 	s_label_group result = zero;
 	result.pos = pos;
 	result.font_type = font_type;
 	result.default_selected = selected;
+	result.spacing = spacing;
 	return result;
 }
 
@@ -1739,7 +1738,7 @@ func s_ui_state add_label(s_label_group* group, char* text)
 	}
 
 	draw_text(text, group->pos, 15, color, group->font_type, true);
-	group->pos.y += game->font_arr[group->font_type].size;
+	group->pos.y += group->spacing;
 
 	if(result.clicked)
 	{
