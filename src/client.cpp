@@ -141,9 +141,6 @@ m_update_game(update_game)
 		m_gl_funcs
 		#undef X
 
-		game->sprite_data[e_sprite_player].pos = v2i(16, 0);
-		game->sprite_data[e_sprite_player].size = v2i(16, 32);
-
 		game->sprite_data[e_sprite_dirt].pos = v2i(0, 0);
 		game->sprite_data[e_sprite_dirt].size = v2i(16, 16);
 
@@ -176,6 +173,7 @@ m_update_game(update_game)
 
 		game->sprite_data[e_sprite_rect].pos = v2i(32, 0);
 		game->sprite_data[e_sprite_rect].size = v2i(16, 16);
+
 	}
 
 	if(platform_data->window_resized)
@@ -338,18 +336,7 @@ func void update()
 			{
 				s_player* player = &game->transient.player;
 
-				float x_dir = 0;
-				if(is_key_down(g_logic_input, c_key_a))
-				{
-					x_dir = -1;
-				}
-				if(is_key_down(g_logic_input, c_key_d))
-				{
-					x_dir = 1;
-				}
-
 				int how_many_blocks_can_dash_break = get_how_many_blocks_can_dash_break();
-
 				float dash_cd = get_dash_cd();
 				b8 can_dash = player->state != e_player_state_dashing && player->dash_cd_time >= dash_cd;
 				if(can_dash && game->transient.upgrades_chosen[e_upgrade_dash] > 0 && is_key_pressed(g_logic_input, c_key_f))
@@ -364,9 +351,33 @@ func void update()
 
 				b8 dashing = player->state == e_player_state_dashing;
 
+				int x_dir = 0;
+				if(is_key_down(g_logic_input, c_key_a))
+				{
+					x_dir += -1;
+					player->flip_x = true;
+				}
+				if(is_key_down(g_logic_input, c_key_d))
+				{
+					x_dir += 1;
+					player->flip_x = false;
+				}
+				if(x_dir != 0 || dashing)
+				{
+					if(dashing)
+					{
+						player->flip_x = player->dash_dir.x > 0 ? false : true;
+					}
+					set_animation(player, e_animation_player_run);
+				}
+				else
+				{
+					set_animation(player, e_animation_player_idle);
+				}
+
 				if(dashing)
 				{
-					x_dir = player->dash_dir.x > 0.0f ? 1.0f : -1.0f;
+					x_dir = player->dash_dir.x > 0 ? 1 : -1;
 					player->x += player->dash_dir.x * c_dash_speed * delta;
 					player->dash_time += delta;
 					if(player->dash_time >= c_dash_duration)
@@ -573,6 +584,8 @@ func void update()
 					});
 				}
 
+				player->animation_timer += delta;
+
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		update player end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -685,8 +698,12 @@ func void render(float dt)
 
 			// @Note(tkap, 01/10/2023): Draw player
 			{
-				s_v2 pos = lerp(game->transient.player.prev_pos, game->transient.player.pos, dt);
-				draw_texture(pos, e_layer_player, c_player_size, make_color(c_player_brightness), game->sprite_data[e_sprite_player], true, dt);
+				s_player player = game->transient.player;
+				s_v2 pos = lerp(player.prev_pos, player.pos, dt);
+				draw_texture(
+					pos, e_layer_player, c_player_size, make_color(c_player_brightness),
+					get_animation_frame(player.current_animation, player.animation_timer), true, dt, {.flip_x = player.flip_x}
+				);
 			}
 
 			{
@@ -1307,6 +1324,7 @@ func void reset_level()
 	player->pos.y = -500;
 	player->prev_pos = player->pos;
 	player->level = 1;
+	set_animation(player, e_animation_player_idle);
 	game->transient.kill_area_speed = 80;
 	game->camera.center = player->pos;
 	game->camera.prev_center = game->camera.center;
@@ -2058,4 +2076,19 @@ func float get_dash_cd()
 	result *= dec;
 
 	return result;
+}
+
+func s_sprite_data get_animation_frame(int animation_id, float time)
+{
+	float delay = g_animation[animation_id].delay;
+	int index = roundfi(time / delay * g_animation[animation_id].frame_count);
+	index %= g_animation[animation_id].frame_count;
+	return g_animation[animation_id].frames[index];
+}
+
+func void set_animation(s_player* player, int animation_id)
+{
+	if(player->current_animation == animation_id) { return; }
+	player->animation_timer = 0;
+	player->current_animation = animation_id;
 }

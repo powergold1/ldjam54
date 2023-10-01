@@ -1,7 +1,6 @@
 
 enum e_sprite
 {
-	e_sprite_player,
 	e_sprite_grass,
 	e_sprite_dirt,
 	e_sprite_stone,
@@ -105,6 +104,45 @@ struct s_shader_paths
 	char* fragment_path;
 };
 
+enum e_animation
+{
+	e_animation_player_idle,
+	e_animation_player_run,
+};
+
+struct s_sprite_data
+{
+	s_v2i pos;
+	s_v2i size;
+};
+
+struct s_animation
+{
+	float delay;
+	int frame_count;
+	s_sprite_data frames[4];
+};
+
+global constexpr s_animation g_animation[] = {
+	{
+		.delay = 0.25f,
+		.frame_count = 2,
+		.frames = {
+			{.pos = {48, 0}, .size = {16, 32}},
+			{.pos = {64, 0}, .size = {16, 32}},
+		},
+	},
+	{
+		.delay = 0.25f,
+		.frame_count = 3,
+		.frames = {
+			{.pos = {80, 0}, .size = {16, 32}},
+			{.pos = {96, 0}, .size = {16, 32}},
+			{.pos = {112, 0}, .size = {16, 32}},
+		},
+	},
+};
+
 struct s_ui_state
 {
 	b8 clicked;
@@ -200,7 +238,9 @@ enum e_player_state
 
 struct s_player : s_entity
 {
+	b8 flip_x;
 	e_player_state state;
+	int current_animation;
 	int jumps_done;
 	int level;
 	int exp;
@@ -209,6 +249,7 @@ struct s_player : s_entity
 	float dig_timer;
 	float dash_time;
 	float dash_cd_time;
+	float animation_timer;
 	s_v2 dash_dir;
 	s_v2 vel;
 };
@@ -218,11 +259,6 @@ struct s_portal : s_entity
 	s_v2 target_pos;
 };
 
-struct s_sprite_data
-{
-	s_v2i pos;
-	s_v2i size;
-};
 
 enum e_tile
 {
@@ -508,6 +544,8 @@ func float get_kill_area_speed();
 func void damage_tile(s_v2i index, int damage);
 func int get_how_many_blocks_can_dash_break();
 func float get_dash_cd();
+func s_sprite_data get_animation_frame(int animation_id, float time);
+func void set_animation(s_player* player, int animation_id);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);
