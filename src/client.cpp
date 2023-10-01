@@ -92,22 +92,7 @@ m_update_game(update_game)
 		game->sounds[e_sound_break_gem] = load_wav("assets/break_gem.wav", g_platform_data->frame_arena);
 		game->sounds[e_sound_dig] = load_wav("assets/dig.wav", g_platform_data->frame_arena);
 
-		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		particle framebuffer start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-		{
-			glGenFramebuffers(1, &game->particle_fbo);
-			glBindFramebuffer(GL_FRAMEBUFFER, game->particle_fbo);
-
-			glGenTextures(1, &game->particle_texture);
-			glBindTexture(GL_TEXTURE_2D, game->particle_texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (int)c_base_res.x, (int)c_base_res.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, game->particle_texture, 0);
-
-			assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		}
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		particle framebuffer end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		recreate_particle_framebuffer(platform_data->window_width, platform_data->window_height);
 
 		game->player_bounds = true;
 		game->camera_bounds = true;
@@ -188,6 +173,11 @@ m_update_game(update_game)
 
 		game->sprite_data[e_sprite_rect].pos = v2i(32, 0);
 		game->sprite_data[e_sprite_rect].size = v2i(16, 16);
+	}
+
+	if(platform_data->window_resized)
+	{
+		recreate_particle_framebuffer(platform_data->window_width, platform_data->window_height);
 	}
 
 	g_window.width = platform_data->window_width;
@@ -1660,4 +1650,30 @@ func void do_tile_particles(s_v2 pos, int tile_type, int type)
 		.pos = pos,
 		.color = color,
 	});
+}
+
+func void recreate_particle_framebuffer(int width, int height)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	if(game->particle_fbo != 0)
+	{
+		assert(game->particle_texture != 0);
+		glDeleteFramebuffers(1, &game->particle_fbo);
+		glDeleteTextures(1, &game->particle_texture);
+
+		game->particle_texture = 0;
+		game->particle_fbo = 0;
+	}
+	glGenFramebuffers(1, &game->particle_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, game->particle_fbo);
+
+	glGenTextures(1, &game->particle_texture);
+	glBindTexture(GL_TEXTURE_2D, game->particle_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, game->particle_texture, 0);
+
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

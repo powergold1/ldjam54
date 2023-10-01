@@ -442,6 +442,7 @@ func s_v2 world_to_screen(s_v2 pos, s_camera cam);
 func s_v2 get_tile_pos(s_v2i index);
 func void do_normal_render(u32 texture, int render_type);
 func void do_tile_particles(s_v2 pos, int tile_type, int type);
+func void recreate_particle_framebuffer(int width, int height);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

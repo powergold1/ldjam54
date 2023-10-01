@@ -32,7 +32,8 @@ X(PFNGLBLENDEQUATIONPROC, glBlendEquation) \
 X(PFNGLDELETEPROGRAMPROC, glDeleteProgram) \
 X(PFNGLDELETESHADERPROC, glDeleteShader) \
 X(PFNGLUNIFORM1IPROC, glUniform1i) \
-X(PFNGLUNIFORM1FPROC, glUniform1f)
+X(PFNGLUNIFORM1FPROC, glUniform1f) \
+X(PFNGLDELETEFRAMEBUFFERSPROC, glDeleteFramebuffers)
 
 global constexpr int c_key_backspace = 0x08;
 global constexpr int c_key_tab = 0x09;
@@ -152,6 +153,7 @@ struct s_platform_data
 	b8 quit_after_this_frame;
 	b8 any_key_pressed;
 	b8 is_window_active;
+	b8 window_resized;
 	int window_width;
 	int window_height;
 	f64 time_passed;

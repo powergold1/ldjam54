@@ -160,6 +160,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 		{
 			g_window.width = LOWORD(lparam);
 			g_window.height = HIWORD(lparam);
+			g_platform_data.window_resized = true;
 		} break;
 
 		case WM_KEYDOWN:
