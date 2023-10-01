@@ -32,6 +32,10 @@ enum e_sound
 	e_sound_break_tile,
 	e_sound_break_gem,
 	e_sound_dig,
+	e_sound_player_hurt,
+	e_sound_portal,
+	e_sound_win,
+	e_sound_jump,
 	e_sound_count,
 };
 

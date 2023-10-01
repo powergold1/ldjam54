@@ -36,7 +36,7 @@ pushd build
 	)
 
 	if %debug%==0 (
-		cl ..\src\win32_platform.cpp ..\src\client.cpp -FeGNOP.exe %comp% -link %linker% -PDB:platform_client.pdb ..\icon.res > temp_compiler_output.txt
+		cl ..\src\win32_platform.cpp ..\src\client.cpp -FeDigHard.exe %comp% -link %linker% -PDB:platform_client.pdb ..\icon.res > temp_compiler_output.txt
 		if NOT !ErrorLevel! == 0 (
 			type temp_compiler_output.txt
 			popd
@@ -44,7 +44,7 @@ pushd build
 		)
 		type temp_compiler_output.txt
 	) else (
-		cl ..\src\client.cpp /Yupch_client.h -LD -FeGNOP.dll %comp% -link %linker% pch_client.obj -PDB:client.pdb > temp_compiler_output.txt
+		cl ..\src\client.cpp /Yupch_client.h -LD -FeDigHard.dll %comp% -link %linker% pch_client.obj -PDB:client.pdb > temp_compiler_output.txt
 		if NOT !ErrorLevel! == 0 (
 			type temp_compiler_output.txt
 			popd
@@ -52,9 +52,9 @@ pushd build
 		)
 		type temp_compiler_output.txt
 
-		tasklist /fi "ImageName eq GNOP.exe" /fo csv 2>NUL | find /I "GNOP.exe">NUL
+		tasklist /fi "ImageName eq DigHard.exe" /fo csv 2>NUL | find /I "DigHard.exe">NUL
 		if NOT !ERRORLEVEL!==0 (
-			cl ..\src\win32_platform.cpp /Yupch_platform.h -FeGNOP.exe %comp% -link %linker% pch_platform.obj -PDB:platform_client.pdb > temp_compiler_output.txt
+			cl ..\src\win32_platform.cpp /Yupch_platform.h -FeDigHard.exe %comp% -link %linker% pch_platform.obj -PDB:platform_client.pdb > temp_compiler_output.txt
 			if NOT !ErrorLevel! == 0 (
 				type temp_compiler_output.txt
 				popd
@@ -69,7 +69,7 @@ if %errorlevel%==0 goto success
 goto fail
 
 :success
-copy build\GNOP.exe GNOP.exe > NUL
+copy build\DigHard.exe DigHard.exe > NUL
 goto end
 
 :fail

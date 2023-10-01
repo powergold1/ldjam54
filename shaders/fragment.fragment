@@ -8,6 +8,7 @@ in vec2 v_local_uv;
 
 out vec4 out_color;
 
+uniform vec2 base_res;
 uniform vec2 window_size;
 uniform float time;
 uniform vec2 player_pos;
@@ -45,7 +46,7 @@ bool point_in_rect_topleft(vec2 point, vec2 pos, vec2 size)
 
 vec3 circle(vec2 pos, vec2 uv, float radius)
 {
-	vec2 ar = vec2(1.0, window_size.y / window_size.x);
+	vec2 ar = vec2(1.0, base_res.y / base_res.x);
 	pos *= ar;
 	uv *= ar;
 	float d = distance(pos, uv);
@@ -88,23 +89,50 @@ void main()
 	}
 
 	// @Note(tkap, 01/10/2023): kill area
-	if(t.effect_id == 111)
+	if(t.effect_id == 1)
 	{
-		vec2 uv = v_local_uv;
-		color.rgb = vec3(1.0,0,0);
-		float t = sin(time * 0.5) * 2.0;
-		float mag = range_lerp(sin(time + uv.x * 7.0), -1, 1, 0.0, 0.3);
-		float foo = 0.1 + mag;
-		float arg = uv.y + foo + foo * cos(t + uv.x * 50);
-		color.g = clamp((1.0 - arg) * 1, 0.0, 1.0);
-		color.a = clamp((1.0 - arg) * 30, 0.0, 1.0);
+		// vec2 uv = v_local_uv;
+		// color.rgb = vec3(1.0,0,0);
+		// float t = sin(time * 0.5) * 2.0;
+		// float mag = range_lerp(sin(time + uv.x * 7.0), -1, 1, 0.0, 0.3);
+		// float foo = 0.1 + mag;
+		// float arg = uv.y + foo + foo * cos(t + uv.x * 50);
+		// color.g = clamp((1.0 - arg) * 1, 0.0, 1.0);
+		// color.a = clamp((1.0 - arg) * 30, 0.0, 1.0);
+
+		vec2 frag = gl_FragCoord.xy;
+		vec2 ar = vec2(window_size.x / base_res.x, window_size.y / base_res.y);
+		frag /= ar;
+		frag.x += player_pos.x;
+
+		float height = t.draw_size.y;
+		float edge_size = 100;
+		float edge = height - edge_size;
+		vec2 uv = frag / height;
+		color.rgb = vec3(0.3, 0.1, 0.7);
+		if(frag.y > edge)
+		{
+			float a = sin(player_pos.x * 0.1 + v_local_uv.x * 200) * 0.2;
+			float b = sin(player_pos.x * 0.1 + v_local_uv.x * 150 + time * 5) * 0.1;
+			a += b;
+			float uv = (frag.y - edge) / edge_size;
+			color.a = pow(1-uv + a, 2);
+			if(color.a < 0.1) { discard; }
+			color.a = step(0.1, color.a);
+		}
+		float n = texture(noise, frag * 0.001).r;
+		n = pow(n, 0.5);
+		color.rgb += vec3(smoothstep(0.7, 1.5, n), 0, 0);
+		color.rgb *= n;
+		color.rgb *= 0.75;
+
 	}
 
 	// @Note(tkap, 01/10/2023): Background
 	else if(t.effect_id == 2)
 	{
 		float p = player_pos.y / 32768.0;
-		vec2 ar = vec2(1.0, window_size.y / window_size.x);
+		vec2 ar = vec2(1.0, base_res.y / base_res.x);
 		vec2 uv = v_local_uv * ar;
 		float t = time * 0.05;
 		uv = uv * 2 - 1;

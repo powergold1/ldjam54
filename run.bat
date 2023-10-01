@@ -1,3 +1,3 @@
 @echo off
 
-start "GNOP" GNOP.exe
+start "DigHard" DigHard.exe

@@ -9,6 +9,7 @@ out vec2 v_local_uv;
 out vec2 v_uv;
 out flat s_transform v_t;
 
+uniform vec2 base_res;
 uniform vec2 window_size;
 uniform float time;
 
@@ -77,9 +78,9 @@ void main()
 		bottomleft,
 	};
 
-	vec2 pos = t.pos * (2 / window_size) - 1;
+	vec2 pos = t.pos * (2 / base_res) - 1;
 	pos.y *= -1;
-	vec2 size = t.draw_size / window_size;
+	vec2 size = t.draw_size / base_res;
 
 	v_t = t;
 

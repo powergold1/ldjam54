@@ -2,6 +2,6 @@
 
 call build pch
 
-del GNOP.zip
-copy build\GNOP.exe GNOP.exe
-7z a GNOP.zip GNOP.exe assets shaders
+del DigHard.zip
+copy build\DigHard.exe DigHard.exe
+7z a DigHard.zip DigHard.exe assets shaders

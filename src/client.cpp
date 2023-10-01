@@ -92,6 +92,10 @@ m_update_game(update_game)
 		game->sounds[e_sound_break_tile] = load_wav("assets/break.wav", g_platform_data->frame_arena);
 		game->sounds[e_sound_break_gem] = load_wav("assets/break_gem.wav", g_platform_data->frame_arena);
 		game->sounds[e_sound_dig] = load_wav("assets/dig.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_player_hurt] = load_wav("assets/player_hurt.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_portal] = load_wav("assets/portal.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_win] = load_wav("assets/win.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_jump] = load_wav("assets/jump.wav", g_platform_data->frame_arena);
 
 		game->best_time = 999999.0f;
 
@@ -208,8 +212,8 @@ m_update_game(update_game)
 		game->current_resolution_index = g_platform_funcs.cycle_between_available_resolutions(game->current_resolution_index);
 		g_platform_data->any_key_pressed = false;
 	}
-	g_platform_data->mouse.x *= c_base_res.x / (float)c_resolutions[game->current_resolution_index].x;
-	g_platform_data->mouse.y *= c_base_res.y / (float)c_resolutions[game->current_resolution_index].y;
+	g_platform_data->mouse.x *= c_base_res.x / (float)g_window.width;
+	g_platform_data->mouse.y *= c_base_res.y / (float)g_window.height;
 
 	game->update_timer += g_platform_data->time_passed;
 	game->frame_count += 1;
@@ -447,6 +451,7 @@ func void update()
 				if(can_jump && is_key_pressed(g_logic_input, c_key_space))
 				{
 					player->jumps_done += 1;
+					play_sound_if_supported(e_sound_jump);
 					player->state = e_player_state_jumping;
 					player->vel.y = c_gravity * -0.42f;
 				}
@@ -504,7 +509,7 @@ func void update()
 					if(distance < c_portal_size * 0.5f)
 					{
 						player->pos = portal.target_pos;
-						play_sound_if_supported(e_sound_break_gem);
+						play_sound_if_supported(e_sound_portal);
 					}
 
 					if(delta > 0)
@@ -556,12 +561,13 @@ func void update()
 					}
 				}
 
-				if(player->y < game->kill_area_bottom)
+				if(player->y < game->kill_area_bottom - 100)
 				{
 					if(game->transient.kill_area_timer >= c_kill_area_delay)
 					{
 						game->transient.kill_area_timer -= c_kill_area_delay;
 						player->damage_taken += 1;
+						play_sound_if_supported(e_sound_player_hurt);
 						if(player->damage_taken >= get_max_health())
 						{
 							reset_level();
@@ -655,7 +661,7 @@ func void render(float dt)
 		case e_state_main_menu:
 		{
 			s_v2i res = c_resolutions[game->current_resolution_index];
-			draw_text("GAME NAME", game->title_pos, 15, v4(hsv_to_rgb(game->title_color), 1), e_font_huge, true);
+			draw_text("DigHard", game->title_pos, 15, v4(hsv_to_rgb(game->title_color), 1), e_font_huge, true);
 			draw_text("Press Any Key to Start", v2(c_half_res.x, c_base_res.y * 0.7f), 15, v4(1), e_font_big, true);
 			draw_text(
 				format_text("Press F2 to change resolution (%ix%i)", res.x, res.y), v2(c_half_res.x, c_base_res.y * 0.8f), 15, v4(1), e_font_medium, true
@@ -845,6 +851,21 @@ func void render(float dt)
 				}
 			}
 			#endif // m_debug
+
+			if(game->transient.beat_time < 5)
+			{
+				float alpha = game->transient.beat_time >= 4 ? (range_lerp((float)game->transient.beat_time, 4, 5, 1, 0)) : 1.0f;
+				draw_texture(
+					c_base_res * v2(0.82f, 0.1f) - v2(4), 14, v2(220, 100), v4(0.25f, 0.25f, 0.25f, alpha),
+					game->sprite_data[e_sprite_rect], false, dt,
+					{.origin_offset = c_origin_topleft}
+				);
+				draw_text("A/D: Movement", c_base_res * v2(0.82f, 0.1f), 15, v4(1, 1, 1, alpha), e_font_small, false);
+				draw_text("Space: Jump", c_base_res * v2(0.82f, 0.13f), 15, v4(1, 1, 1, alpha), e_font_small, false);
+				draw_text("Left click: Dig", c_base_res * v2(0.82f, 0.16f), 15, v4(1, 1, 1, alpha), e_font_small, false);
+				draw_text("R: Restart", c_base_res * v2(0.82f, 0.19f), 15, v4(1, 1, 1, alpha), e_font_small, false);
+			}
+
 		} break;
 
 		case e_state_victory:
@@ -911,6 +932,11 @@ func void render(float dt)
 
 		{
 			int location = glGetUniformLocation(game->programs[e_shader_default], "window_size");
+			s_v2 window_size = v2(g_window.width, g_window.height);
+			glUniform2fv(location, 1, &window_size.x);
+		}
+		{
+			int location = glGetUniformLocation(game->programs[e_shader_default], "base_res");
 			glUniform2fv(location, 1, &c_base_res.x);
 		}
 		{
@@ -1715,6 +1741,7 @@ func void begin_winning()
 	assert(!game->transient.won);
 	game->transient.winning = true;
 	game->transient.won = true;
+	play_sound_if_supported(e_sound_win);
 }
 
 func b8 is_tile_active(int x, int y)

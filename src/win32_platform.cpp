@@ -105,16 +105,16 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		g_platform_data.time_passed = time_passed;
 
 		#ifdef m_debug
-		if(need_to_reload_dll("build/GNOP.dll"))
+		if(need_to_reload_dll("build/DigHard.dll"))
 		{
 			if(dll) { unload_dll(dll); }
 
 			for(int i = 0; i < 100; i++)
 			{
-				if(CopyFile("build/GNOP.dll", "GNOP.dll", false)) { break; }
+				if(CopyFile("build/DigHard.dll", "DigHard.dll", false)) { break; }
 				Sleep(10);
 			}
-			dll = load_dll("GNOP.dll");
+			dll = load_dll("DigHard.dll");
 			update_game = (t_update_game*)GetProcAddress(dll, "update_game");
 			assert(update_game);
 			printf("Reloaded DLL!\n");
@@ -225,7 +225,7 @@ LRESULT window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 
 func void create_window(int width, int height)
 {
-	char* class_name = "GNOP_CLASS";
+	char* class_name = "DigHard_CLASS";
 	HINSTANCE instance = GetModuleHandle(null);
 
 	PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = null;
@@ -304,7 +304,7 @@ func void create_window(int width, int height)
 		g_window.handle = CreateWindowEx(
 			0,
 			class_name,
-			"GNOP",
+			"DigHard",
 			style,
 			CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
 			null,
