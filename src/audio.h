@@ -26,4 +26,4 @@ struct s_data_chunk
 };
 #pragma pack(pop)
 
-func b8 play_sound_if_supported(s_sound sound);
+func b8 play_sound_if_supported(e_sound sound);

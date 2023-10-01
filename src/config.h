@@ -5,7 +5,7 @@ global constexpr s_v2 c_half_res = {1366 / 2.0f, 768 / 2.0f};
 
 global constexpr int c_num_channels = 2;
 global constexpr int c_sample_rate = 44100;
-global constexpr int c_max_concurrent_sounds = 16;
+global constexpr int c_max_concurrent_sounds = 32;
 
 global constexpr int c_updates_per_second = 60;
 global constexpr f64 c_update_delay = 1.0 / c_updates_per_second;
@@ -48,7 +48,7 @@ global constexpr float c_kill_area_delay = 1;
 global constexpr int c_player_health = 3;
 
 global constexpr char* debug_text[] = {
-	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity",
+	"High speed", "Super dig", "Player bounds", "Camera bounds", "High gravity", "No kill area",
 };
 
 global constexpr float c_depth_goals[] = {

@@ -16,5 +16,6 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "rng.h"
 #include "math.h"
 #include "utils.h"

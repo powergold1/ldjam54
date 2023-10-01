@@ -1,6 +1,7 @@
 
 
 #define invalid_default_case default: { assert(false); }
+#define invalid_else else { assert(false); }
 
 #define error(b) do { if(!(b)) { printf("ERROR\n"); exit(1); }} while(0)
 #define assert(cond) do { if(!(cond)) { on_failed_assert(#cond, __FILE__, __LINE__); } } while(0)
@@ -287,4 +288,26 @@ func int circular_index(int index, int size)
 func s_v4 rgb(float r, float g, float b)
 {
 	return v4(r, g, b, 1);
+}
+
+[[nodiscard]]
+func constexpr s_v4 rgb(int hex)
+{
+	s_v4 result;
+	result.x = ((hex & 0xFF0000) >> 16) / 255.0f;
+	result.y = ((hex & 0x00FF00) >> 8) / 255.0f;
+	result.z = ((hex & 0x0000FF)) / 255.0f;
+	result.w = 1;
+	return result;
+}
+
+[[nodiscard]]
+func constexpr s_v4 rgba(int hex)
+{
+	s_v4 result;
+	result.x = ((hex & 0xFF000000) >> 24) / 255.0f;
+	result.y = ((hex & 0x00FF0000) >> 16) / 255.0f;
+	result.z = ((hex & 0x0000FF00) >> 8) / 255.0f;
+	result.w = ((hex & 0x000000FF) >> 0) / 255.0f;
+	return result;
 }

@@ -10,6 +10,7 @@ out vec4 out_color;
 
 uniform vec2 window_size;
 uniform float time;
+uniform vec2 player_pos;
 
 layout (location = 0) uniform sampler2D in_texture;
 layout (location = 1) uniform sampler2D noise;
@@ -56,8 +57,8 @@ vec3 circle(vec2 pos, vec2 uv, float radius)
 void main()
 {
 	s_transform t = v_t;
-
 	vec4 color;
+
 	if(t.texture_id != 0)
 	{
 		color = texture(in_texture, v_uv) * t.color;
@@ -68,6 +69,7 @@ void main()
 		color = t.color;
 		color.rgb = mix(color.rgb, t.mix_color.rgb, t.mix_weight);
 	}
+
 
 	if(t.do_circle != 0)
 	{
@@ -96,6 +98,43 @@ void main()
 		float arg = uv.y + foo + foo * cos(t + uv.x * 50);
 		color.g = clamp((1.0 - arg) * 1, 0.0, 1.0);
 		color.a = clamp((1.0 - arg) * 30, 0.0, 1.0);
+	}
+	else if(t.effect_id == 22)
+	{
+		vec2 ar = vec2(1.0, window_size.y / window_size.x);
+		vec2 uv = v_local_uv * ar;
+		float t = time * 0.05;
+		uv = uv * 2 - 1;
+
+		uv *= 15 * range_lerp(sin(time * 0.1), -1, 1, 0.9, 1.0);
+		ivec2 id = ivec2(floor(uv.x+t)+1, floor(uv.y+t)+1);
+		float r = n22(vec2(id.x, id.y)).x;
+		float g = n22(vec2(id.x+1000, id.y)).x;
+		float b = n22(vec2(id.x, id.y+1000)).x;
+		// uv = fract(uv);
+		// uv = uv * 2 - vec2(1);
+
+		color.r = r * 0.2;
+		color.g = g * 0.5;
+		color.b = b * 0.1;
+
+		uv *= 4;
+		id = ivec2(floor(uv.x+t*4)+1, floor(uv.y+t*4)+1);
+		// uv = fract(uv);
+
+		r = n22(vec2(id.x, id.y)).x;
+		g = n22(vec2(id.x+1000, id.y)).x;
+		b = n22(vec2(id.x, id.y+1000)).x;
+
+		color.r += r * 0.2;
+		color.g += g * 0.5;
+		color.b += b * 0.1;
+
+		float p = player_pos.y / 32768.0;
+		color.r += p;
+		color.g *= 1-p;
+
+		color.rgb *= 0.1;
 	}
 	color = pma(color);
 

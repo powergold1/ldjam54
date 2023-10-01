@@ -501,3 +501,12 @@ func b8 operator==(s_v2i a, s_v2i b)
 {
 	return a.x == b.x && a.y == b.y;
 }
+
+[[nodiscard]]
+func s_v2 random_point_in_rect_topleft(s_v2 pos, s_v2 size, s_rng* rng)
+{
+	return v2(
+		pos.x + rng->randf32() * size.x,
+		pos.y + rng->randf32() * size.y
+	);
+}

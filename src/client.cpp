@@ -88,6 +88,27 @@ m_update_game(update_game)
 		m_gl_funcs
 		#undef X
 
+		game->sounds[e_sound_break_tile] = load_wav("assets/break.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_break_gem] = load_wav("assets/break_gem.wav", g_platform_data->frame_arena);
+		game->sounds[e_sound_dig] = load_wav("assets/dig.wav", g_platform_data->frame_arena);
+
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		particle framebuffer start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+		{
+			glGenFramebuffers(1, &game->particle_fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, game->particle_fbo);
+
+			glGenTextures(1, &game->particle_texture);
+			glBindTexture(GL_TEXTURE_2D, game->particle_texture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (int)c_base_res.x, (int)c_base_res.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, game->particle_texture, 0);
+
+			assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		particle framebuffer end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 		game->player_bounds = true;
 		game->camera_bounds = true;
 
@@ -312,7 +333,10 @@ func void update()
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		reset game end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-			game->kill_area_bottom += delta * 80;
+			if(!game->no_kill_area)
+			{
+				game->kill_area_bottom += delta * 80;
+			}
 			game->transient.kill_area_timer = at_most(c_kill_area_delay + delta, game->transient.kill_area_timer + delta);
 
 			// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		update player start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -366,7 +390,7 @@ func void update()
 				{
 					player->jumps_done += 1;
 					player->jumping = true;
-					player->vel.y = c_gravity * -0.4f;
+					player->vel.y = c_gravity * -0.42f;
 				}
 
 				player->y += player->vel.y * delta;
@@ -428,7 +452,23 @@ func void update()
 							if(game->tiles[hovered.y][hovered.x].damage_taken >= health)
 							{
 								add_exp(g_tile_data[tile.type].exp);
+
+								do_tile_particles(
+									random_point_in_rect_topleft(get_tile_pos(hovered), v2(c_tile_size), &game->rng),
+									tile.type, 1
+								);
+								play_sound_if_supported(g_tile_data[tile.type].break_sound);
 								game->tiles_active[hovered.y][hovered.x] = false;
+							}
+							else
+							{
+								s_v2 pos;
+								if(get_hovered_tile(game->camera) == hovered) { pos = get_world_mouse(game->camera); }
+								else { pos = random_point_in_rect_topleft(get_tile_pos(hovered), v2(c_tile_size), &game->rng); }
+								do_tile_particles(
+									pos, tile.type, 0
+								);
+								play_sound_if_supported(e_sound_dig);
 							}
 						}
 					}
@@ -506,6 +546,7 @@ func void update()
 
 func void render(float dt)
 {
+	s_camera interpolated_camera = game->camera;
 	switch(game->state)
 	{
 		case e_state_main_menu:
@@ -521,7 +562,6 @@ func void render(float dt)
 
 		case e_state_game:
 		{
-			s_camera interpolated_camera = game->camera;
 			interpolated_camera.center = lerp(interpolated_camera.prev_center, interpolated_camera.center, dt);
 			s_bounds cam_bounds = get_camera_bounds(interpolated_camera);
 
@@ -539,13 +579,13 @@ func void render(float dt)
 					float p = i / (float)(bars - 1);
 					draw_texture(
 						v2(c_base_res.x * p - 4, 0.0f), e_layer_exp_bar, v2(8.0f, bar_height), make_color(0.25f), game->sprite_data[e_sprite_rect], false, dt,
-						{.sublayer = 2, .effect_id = 1, .origin_offset = c_origin_topleft}
+						{.sublayer = 2, .origin_offset = c_origin_topleft}
 					);
 				}
 				float exp_percent = game->transient.player.exp / (float)get_required_exp_to_level_up(game->transient.player.level);
 				draw_texture(
-						v2(0.0f, 0.0f), e_layer_exp_bar, v2(c_base_res.x * exp_percent, bar_height), rgb(0, 1, 0), game->sprite_data[e_sprite_rect], false, dt,
-						{.sublayer = 1, .effect_id = 1, .origin_offset = c_origin_topleft}
+						v2(0.0f, 0.0f), e_layer_exp_bar, v2(c_base_res.x * exp_percent, bar_height), rgb(0x41ACBF), game->sprite_data[e_sprite_rect], false, dt,
+						{.sublayer = 1, .origin_offset = c_origin_topleft}
 					);
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		exp bar end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -566,6 +606,12 @@ func void render(float dt)
 				}
 			}
 
+			// @Note(tkap, 01/10/2023): Background
+			draw_texture(
+				c_half_res, e_layer_background, c_base_res, make_color(1), game->sprite_data[e_sprite_rect], false, dt,
+				{.effect_id = 22}
+			);
+
 			int left_tile = at_least(0, floorfi(cam_bounds.left / c_tile_size));
 			int right_tile = at_most(c_tiles_right, ceilfi(cam_bounds.right / c_tile_size));
 			int top_tile = at_least(0, floorfi(cam_bounds.top / c_tile_size));
@@ -583,7 +629,6 @@ func void render(float dt)
 					float mix_weight = 0;
 					if(hovered == v2i(x, y))
 					{
-						printf("%i\n", tile.type);
 						mix_weight = 0.5f;
 					}
 					draw_texture(
@@ -603,6 +648,21 @@ func void render(float dt)
 							game->sprite_data[damage_sprite],
 							true, dt, {.mix_weight = mix_weight, .origin_offset = c_origin_topleft, .mix_color = mix_color}
 						);
+					}
+
+					if(game->frame_count % 10 == 0 && (tile.type == e_tile_emerald || tile.type == e_tile_ruby))
+					{
+						s_v4 color = g_tile_data[tile.type].particle_color;
+						color.w *= 0.1f;
+						spawn_particles(2, {
+							.speed = 30.0f,
+							.radius = 32.0f,
+							.duration = 2.5f,
+							.angle = 0,
+							.angle_rand = 1,
+							.pos = get_tile_center(x, y),
+							.color = color,
+						});
 					}
 				}
 			}
@@ -749,15 +809,8 @@ func void render(float dt)
 		s_v4 color = particle.color;
 		float percent = (particle.time / particle.duration);
 		float percent_left = 1.0f - percent;
-		color.w = powf(percent_left, 0.5f);
-		if(particle.render_type == 0)
-		{
-			draw_circle(particle.pos, 1, particle.radius * range_lerp(percent, 0, 1, 1, 0.2f), color);
-		}
-		else
-		{
-			draw_circle_p(particle.pos, 1, particle.radius * range_lerp(percent, 0, 1, 1, 0.2f), color);
-		}
+		color.w *= powf(percent_left, 0.5f);
+		draw_circle_p(particle.pos, e_layer_particles, particle.radius * range_lerp(percent, 0, 1, 1, 0.2f), color, &interpolated_camera);
 	}
 
 	{
@@ -767,8 +820,6 @@ func void render(float dt)
 		glClearDepth(0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, g_window.width, g_window.height);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_GREATER);
 
 		{
 			int location = glGetUniformLocation(game->programs[e_shader_default], "window_size");
@@ -778,32 +829,41 @@ func void render(float dt)
 			int location = glGetUniformLocation(game->programs[e_shader_default], "time");
 			glUniform1f(location, game->total_time);
 		}
+		{
+			s_v2 player_pos = lerp(game->transient.player.prev_pos, game->transient.player.pos, dt);
+			int location = glGetUniformLocation(game->programs[e_shader_default], "player_pos");
+			glUniform2fv(location, 1, &player_pos.x);
+		}
 
 		if(transforms.count > 0)
 		{
-			glBindVertexArray(game->default_vao);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, game->atlas.id);
-			glUniform1i(1, 1);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-			// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			// glBlendFunc(GL_ONE, GL_ONE);
-			glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(*transforms.elements) * transforms.count, transforms.elements);
-			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, transforms.count);
+			do_normal_render(game->atlas.id, 0);
 			transforms.count = 0;
 		}
 
+		// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv		render particles start		vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 		if(particles.count > 0)
 		{
+			glBindFramebuffer(GL_FRAMEBUFFER, game->particle_fbo);
+			glViewport(0, 0, g_window.width, g_window.height);
+			// glViewport(0, 0, (int)c_base_res.x, (int)c_base_res.y);
+			glClear(GL_COLOR_BUFFER_BIT);
 			glBindVertexArray(game->default_vao);
+			glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
 			// glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			glBlendFunc(GL_ONE, GL_ONE);
 			glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(*particles.elements) * particles.count, particles.elements);
 			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, particles.count);
 			particles.count = 0;
+
+			draw_fbo(game->particle_texture);
+			do_normal_render(game->particle_texture, 1);
+			transforms.count = 0;
 		}
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^		render particles end		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
 
 		for(int font_i = 0; font_i < e_font_count; font_i++)
 		{
@@ -1096,7 +1156,6 @@ func void spawn_particles(int count, s_particle_spawn_data data)
 	for(int i = 0; i < count; i++)
 	{
 		s_particle p = zero;
-		p.render_type = data.render_type;
 		p.duration = data.duration * (1 - data.duration_rand * game->rng.randf32());
 		p.speed = data.speed * (1 - data.speed_rand * game->rng.randf32());
 		p.radius = data.radius * (1 - data.radius_rand * game->rng.randf32());
@@ -1295,6 +1354,7 @@ func b8** get_debug_vars()
 	result[2] = &game->player_bounds;
 	result[3] = &game->camera_bounds;
 	result[4] = &game->high_gravity;
+	result[5] = &game->no_kill_area;
 	return result;
 }
 
@@ -1500,10 +1560,6 @@ func b8 is_tile_active(s_v2i index)
 
 func s_v2i get_closest_tile_to_mouse(s_camera camera)
 {
-	// @Note(tkap, 01/10/2023): Early out for when we are directly hovering over a tile
-	s_v2i hovered = get_hovered_tile(camera);
-	if(is_valid_tile_index(hovered) && is_tile_active(hovered)) { return hovered; }
-
 	s_v2 mouse = get_world_mouse(camera);
 	int mx = floorfi(mouse.x / c_tile_size);
 	int my = floorfi(mouse.y / c_tile_size);
@@ -1544,4 +1600,64 @@ func s_v2 get_tile_center(int x, int y)
 func s_v2 get_tile_center(s_v2i index)
 {
 	return get_tile_center(index.x, index.y);
+}
+
+func s_v2 world_to_screen(s_v2 pos, s_camera cam)
+{
+	s_v2 result;
+	result.x = c_base_res.x / 2 - (cam.center.x - pos.x);
+	result.y = c_base_res.y / 2 - (cam.center.y - pos.y);
+	return result;
+}
+
+func s_v2 get_tile_pos(s_v2i index)
+{
+	assert(is_valid_tile_index(index));
+	return v2(
+		(float)(index.x * c_tile_size),
+		(float)(index.y * c_tile_size)
+	);
+}
+
+func void do_normal_render(u32 texture, int render_type)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindVertexArray(game->default_vao);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(1, 1);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_GREATER);
+	glEnable(GL_BLEND);
+	if(render_type == 0)
+	{
+		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+	else if(render_type == 1)
+	{
+		glBlendFunc(GL_ONE, GL_ONE);
+	}
+	invalid_else;
+
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(*transforms.elements) * transforms.count, transforms.elements);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, transforms.count);
+}
+
+func void do_tile_particles(s_v2 pos, int tile_type, int type)
+{
+	s_v4 color = g_tile_data[tile_type].particle_color;
+	color.w *= type == 0 ? 0.5f : 1.0f;
+	spawn_particles(type == 0 ? 3 : 20, {
+		.speed = 75.0f,
+		.speed_rand = 0.5f,
+		.radius = type == 0 ? 8.0f : 16.0f,
+		.radius_rand = 0.5f,
+		.duration = 0.5f,
+		.duration_rand = 0.5f,
+		.angle = 0,
+		.angle_rand = 1,
+		.pos = pos,
+		.color = color,
+	});
 }

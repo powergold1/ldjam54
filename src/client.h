@@ -18,11 +18,21 @@ enum e_sprite
 
 enum e_layer
 {
+	e_layer_background,
 	e_layer_tiles,
 	e_layer_tiles_decal,
 	e_layer_player,
+	e_layer_particles,
 	e_layer_kill_area,
 	e_layer_exp_bar,
+};
+
+enum e_sound
+{
+	e_sound_break_tile,
+	e_sound_break_gem,
+	e_sound_dig,
+	e_sound_count,
 };
 
 enum e_upgrade
@@ -116,7 +126,6 @@ struct s_entity
 
 struct s_particle_spawn_data
 {
-	s8 render_type;
 	float speed;
 	float speed_rand;
 	float radius;
@@ -132,7 +141,6 @@ struct s_particle_spawn_data
 
 struct s_particle
 {
-	s8 render_type;
 	float time;
 	float duration;
 	float speed;
@@ -185,6 +193,8 @@ struct s_tile_data
 	int exp;
 	int sprite;
 	int health;
+	e_sound break_sound;
+	s_v4 particle_color;
 };
 
 global constexpr s_tile_data g_tile_data[] = {
@@ -194,6 +204,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 1,
 		.sprite = e_sprite_grass,
 		.health = 3,
+		.break_sound = e_sound_break_tile,
+		.particle_color = rgb(0x2CA65F),
 	},
 	{
 		.weight = 900,
@@ -201,6 +213,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 2,
 		.sprite = e_sprite_dirt,
 		.health = 4,
+		.break_sound = e_sound_break_tile,
+		.particle_color = rgb(0x9E492D),
 	},
 	{
 		.weight = 5,
@@ -208,6 +222,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 3,
 		.sprite = e_sprite_stone,
 		.health = 5,
+		.break_sound = e_sound_break_tile,
+		.particle_color = rgb(0x222222),
 	},
 	{
 		.weight = 4,
@@ -215,6 +231,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 4,
 		.sprite = e_sprite_clay,
 		.health = 6,
+		.break_sound = e_sound_break_tile,
+		.particle_color = rgb(0xA5B6C0),
 	},
 
 	// @Note(tkap, 30/09/2023): emerald
@@ -224,6 +242,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 20,
 		.sprite = e_sprite_emerald,
 		.health = 1,
+		.break_sound = e_sound_break_gem,
+		.particle_color = rgb(0x56C4A5),
 	},
 
 	// @Note(tkap, 30/09/2023): ruby
@@ -233,6 +253,8 @@ global constexpr s_tile_data g_tile_data[] = {
 		.exp = 40,
 		.sprite = e_sprite_ruby,
 		.health = 1,
+		.break_sound = e_sound_break_gem,
+		.particle_color = rgb(0xF43F3A),
 	},
 
 	// @Note(tkap, 30/09/2023): unbreakable
@@ -307,11 +329,14 @@ struct s_game
 	b8 in_debug_menu;
 	b8 reset_game;
 	b8 high_speed;
+	b8 no_kill_area;
 	b8 player_bounds;
 	b8 high_gravity;
 	b8 super_dig;
 	b8 camera_bounds;
 	f64 best_time;
+
+	float sound_times[e_sound_count];
 
 	s_game_transient transient;
 
@@ -338,8 +363,13 @@ struct s_game
 	s_sarray<s_particle, 16384> particles;
 	s_sarray<s_delayed_sound, 64> delayed_sounds;
 
+	s_sound sounds[e_sound_count];
+
 	u32 default_vao;
 	u32 default_ssbo;
+
+	u32 particle_fbo;
+	u32 particle_texture;
 
 	s_tile tiles[c_tiles_down][c_tiles_right];
 	b8 tiles_active[c_tiles_down][c_tiles_right];
@@ -408,6 +438,10 @@ func b8 is_tile_active(s_v2i index);
 func s_v2i get_closest_tile_to_mouse(s_camera camera);
 func s_v2 get_tile_center(int x, int y);
 func s_v2 get_tile_center(s_v2i index);
+func s_v2 world_to_screen(s_v2 pos, s_camera cam);
+func s_v2 get_tile_pos(s_v2i index);
+func void do_normal_render(u32 texture, int render_type);
+func void do_tile_particles(s_v2 pos, int tile_type, int type);
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

@@ -24,10 +24,17 @@ func void draw_circle(s_v2 pos, int layer, float radius, s_v4 color, s_transform
 	transforms.add(t);
 }
 
-func void draw_circle_p(s_v2 pos, int layer, float radius, s_v4 color, s_transform t = zero)
+func void draw_circle_p(s_v2 pos, int layer, float radius, s_v4 color, s_camera* camera, s_transform t = zero)
 {
 	t.do_circle = true;
-	t.pos = pos;
+	if(camera)
+	{
+		t.pos = world_to_screen(pos, *camera);
+	}
+	else
+	{
+		t.pos = pos;
+	}
 	t.layer = layer;
 	t.draw_size = v2(radius * 2, radius * 2);
 	t.color = color;
@@ -66,6 +73,18 @@ func void draw_texture(s_v2 pos, int layer, s_v2 size, s_v4 color, s_sprite_data
 	t.uv_min = v2(sprite_data.pos.x / (float)c_atlas_size, sprite_data.pos.y / (float)c_atlas_size);
 	t.uv_max = v2((sprite_data.pos.x + sprite_data.size.x) / (float)c_atlas_size, (sprite_data.pos.y + sprite_data.size.y) / (float)c_atlas_size);
 	t.mix_color = v41f(1);
+	transforms.add(t);
+}
+
+func void draw_fbo(u32 texture, s_transform t = zero)
+{
+	t.layer = e_layer_particles;
+	t.texture_id = texture;
+	t.pos = c_half_res;
+	t.draw_size = c_base_res;
+	t.color = make_color(1);
+	t.uv_min = v2(0, 1);
+	t.uv_max = v2(1, 0);
 	transforms.add(t);
 }
 

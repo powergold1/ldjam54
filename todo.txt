@@ -11,11 +11,18 @@ exp bar
 hot ui system
 see time ingame
 
+1 frame particle could server as light??
+
 polish:
 	particles
 	sounds
 	more gemstones
 	find closest tile to mouse and mine that
+	exp bar flash after getting exp
+	background
+	some block dead animation instead of just disappearing
+	upgrade/level sound
+
 
 probably not:
 	after reaching the bottom, you have to go up???? it makes +1 jump upgrades useful!!

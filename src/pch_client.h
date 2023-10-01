@@ -16,8 +16,8 @@
 #include <intrin.h>
 
 #include "types.h"
+#include "rng.h"
 #include "math.h"
 #include "utils.h"
 #include "memory.h"
 #include "str_builder.h"
-#include "rng.h"
