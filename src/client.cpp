@@ -328,7 +328,8 @@ func void update()
 
 			if(!game->no_kill_area)
 			{
-				game->kill_area_bottom += delta * game->transient.kill_area_speed;
+				float speed = get_kill_area_speed();
+				game->kill_area_bottom += delta * speed;
 				game->transient.kill_area_speed += 0.5f * delta;
 			}
 			game->transient.kill_area_timer = at_most(c_kill_area_delay + delta, game->transient.kill_area_timer + delta);
@@ -1476,13 +1477,20 @@ func char* get_upgrade_description(int id, int level)
 		{
 			return format_text("+%0.f%% movement speed", value);
 		} break;
+
 		case e_upgrade_health:
 		{
 			return format_text("+%0.f health", value);
 		} break;
+
 		case e_upgrade_extra_jump:
 		{
 			return format_text("+%0.f jump", value);
+		} break;
+
+		case e_upgrade_slower_kill_area:
+		{
+			return format_text("The void moves %0.f%% slower", value);
 		} break;
 
 		invalid_default_case;
@@ -1501,7 +1509,7 @@ func float get_upgrade_value(int id, int level)
 
 		case e_upgrade_dig_range:
 		{
-			return 40.0f + 10 * level;
+			return 30.0f + 5 * level;
 		} break;
 		case e_upgrade_movement_speed:
 		{
@@ -1511,9 +1519,15 @@ func float get_upgrade_value(int id, int level)
 		{
 			return 1;
 		} break;
+
 		case e_upgrade_extra_jump:
 		{
 			return 1;
+		} break;
+
+		case e_upgrade_slower_kill_area:
+		{
+			return 5;
 		} break;
 
 		invalid_default_case;
@@ -1883,4 +1897,19 @@ func s_v2 get_camera_wanted_center(s_player player)
 	}
 	return result;
 
+}
+
+func float get_kill_area_speed()
+{
+	float result = game->transient.kill_area_speed;
+
+	float dec = 1;
+	for(int i = 0; i < game->transient.upgrades_chosen[e_upgrade_slower_kill_area]; i++)
+	{
+		dec -= get_upgrade_value(e_upgrade_slower_kill_area, i) / 100;
+	}
+	dec = at_least(0.0f, dec);
+	result *= dec;
+
+	return result;
 }

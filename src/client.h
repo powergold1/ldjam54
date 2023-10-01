@@ -43,6 +43,7 @@ enum e_upgrade
 	e_upgrade_movement_speed,
 	e_upgrade_health,
 	e_upgrade_extra_jump,
+	e_upgrade_slower_kill_area,
 	e_upgrade_count,
 };
 
@@ -490,6 +491,7 @@ func void ui_request_pressed(u32 id, int index);
 func void ui_request_active(u32 id);
 func void ui_request_selected(u32 id, int index);
 func s_v2 get_camera_wanted_center(s_player player);
+func float get_kill_area_speed();
 
 #ifdef m_debug
 func void hot_reload_shaders(void);

@@ -1,4 +1,3 @@
-slow down wall upgrade?
 dash upgrade? breaks blocks (only sideways?)
 buffs like: every second, fire a block breaking laser or whatever
 
