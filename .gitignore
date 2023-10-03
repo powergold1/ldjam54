@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+client
 
 build/**
 .tags
@@ -39,3 +40,5 @@ build_clang.bat
 *.rdbg
 *_output.txt
 *.zip
+tags
+src/tags

@@ -102,9 +102,11 @@ enum e_shader
 
 struct s_shader_paths
 {
+#ifdef _WIN32
 	#ifdef m_debug
 	FILETIME last_write_time;
 	#endif // m_debug
+#endif
 	char* vertex_path;
 	char* fragment_path;
 };
@@ -512,7 +514,7 @@ func b8 is_key_pressed(s_input* input, int key);
 func b8 is_key_released(s_input* input, int key);
 void gl_debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 func void sine_alpha_system(int start, int count);
-func char* handle_plural(int num);
+func const char* handle_plural(int num);
 func s_texture load_texture_from_file(char* path, u32 filtering);
 func void spawn_particles(int count, s_particle_spawn_data data);
 func void play_delayed_sound(s_sound sound, float delay);

@@ -27,8 +27,6 @@ X(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers) \
 X(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer) \
 X(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D) \
 X(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus) \
-X(PFNGLACTIVETEXTUREPROC, glActiveTexture) \
-X(PFNGLBLENDEQUATIONPROC, glBlendEquation) \
 X(PFNGLDELETEPROGRAMPROC, glDeleteProgram) \
 X(PFNGLDELETESHADERPROC, glDeleteShader) \
 X(PFNGLUNIFORM1IPROC, glUniform1i) \
@@ -117,6 +115,9 @@ struct s_sound
 typedef void* (*t_load_gl_func)(const char*);
 typedef b8 (*t_play_sound)(s_sound);
 typedef void (*t_set_swap_interval)(int);
+#ifndef _WIN32
+typedef int BOOL;
+#endif
 typedef int (*t_show_cursor)(BOOL);
 typedef int (*t_cycle_between_available_resolutions)(int);
 
@@ -172,10 +173,9 @@ struct s_platform_funcs
 	t_cycle_between_available_resolutions cycle_between_available_resolutions;
 };
 
-
 #define m_update_game(name) void name(s_platform_data* platform_data, s_platform_funcs platform_funcs, void* game_memory)
 #ifdef m_debug
 typedef m_update_game(t_update_game);
 #else // m_debug
-m_update_game(update_game);
+extern "C" m_update_game(update_game);
 #endif

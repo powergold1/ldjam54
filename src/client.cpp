@@ -47,7 +47,6 @@ global s_platform_funcs g_platform_funcs;
 
 global s_game* game;
 
-global s_v2 previous_mouse;
 global s_ui g_ui;
 
 global s_shader_paths shader_paths[e_shader_count] = {
@@ -68,10 +67,8 @@ m_gl_funcs
 #include "str_builder.cpp"
 #include "audio.cpp"
 
-#ifdef m_debug
 extern "C" {
 __declspec(dllexport)
-#endif // m_debug
 m_update_game(update_game)
 {
 	static_assert(c_game_memory >= sizeof(s_game));
@@ -248,9 +245,7 @@ m_update_game(update_game)
 	}
 }
 
-#ifdef m_debug
 }
-#endif // m_debug
 
 func void update()
 {
@@ -262,11 +257,11 @@ func void update()
 	{
 		case e_state_main_menu:
 		{
-			game->title_pos = v2(
+			game->title_pos = {
 				c_half_res.x,
 				range_lerp(sinf(game->total_time * 2), -1, 1, c_base_res.y * 0.2f, c_base_res.y * 0.4f)
-			);
-			game->title_color = v3(sinf2(game->total_time), 1, 1);
+			};
+			game->title_color = {sinf2(game->total_time), 1, 1};
 
 			if(g_platform_data->any_key_pressed)
 			{
@@ -696,11 +691,11 @@ func void render(float dt)
 		{
 			s_v2i res = c_resolutions[game->current_resolution_index];
 			draw_text("DigHard", game->title_pos, 15, v4(hsv_to_rgb(game->title_color), 1), e_font_huge, true);
-			draw_text("Press Any Key to Start", v2(c_half_res.x, c_base_res.y * 0.7f), 15, v4(1), e_font_big, true);
+			draw_text("Press Any Key to Start", {c_half_res.x, c_base_res.y * 0.7f}, 15, v4(1), e_font_big, true);
 			draw_text(
 				format_text("Press F2 to change resolution (%ix%i)", res.x, res.y), v2(c_half_res.x, c_base_res.y * 0.8f), 15, v4(1), e_font_medium, true
 			);
-			draw_text("Made Live at twitch.tv/Tkap1", v2(c_half_res.x, c_base_res.y * 0.9f), 15, make_color(0.5f), e_font_medium, true);
+			draw_text("Made Live at twitch.tv/Tkap1", {c_half_res.x, c_base_res.y * 0.9f}, 15, make_color(0.5f), e_font_medium, true);
 		} break;
 
 		case e_state_game:
@@ -880,7 +875,7 @@ func void render(float dt)
 			{
 
 				b8** target_vars = get_debug_vars();
-				s_v2 pos = v2(4, 4);
+				s_v2 pos = {4, 4};
 				e_font font_type = e_font_medium;
 				for(int option_i = 0; option_i < array_count(debug_text); option_i++)
 				{
@@ -949,7 +944,13 @@ func void render(float dt)
 			}
 			if(is_key_pressed(g_input, c_key_escape))
 			{
+#ifdef _WIN32
 				ExitProcess(0);
+#else
+#ifdef __linux
+				exit(0);
+#endif
+#endif
 			}
 		} break;
 
@@ -1212,6 +1213,7 @@ func s_v2 get_text_size(const char* text, e_font font_id)
 #ifdef m_debug
 func void hot_reload_shaders(void)
 {
+#ifdef _WIN32
 	for(int shader_i = 0; shader_i < e_shader_count; shader_i++)
 	{
 		s_shader_paths* sp = &shader_paths[shader_i];
@@ -1238,7 +1240,7 @@ func void hot_reload_shaders(void)
 
 		FindClose(handle);
 	}
-
+#endif
 }
 #endif // m_debug
 
@@ -1252,20 +1254,25 @@ func u32 load_shader(const char* vertex_path, const char* fragment_path)
 	char* fragment_src = read_file(fragment_path, frame_arena);
 	if(!fragment_src || !fragment_src[0]) { return 0; }
 
-	#ifdef m_debug
 	const char* vertex_src_arr[] = {header, read_file("src/shader_shared.h", frame_arena), vertex_src};
 	const char* fragment_src_arr[] = {header, read_file("src/shader_shared.h", frame_arena), fragment_src};
-	#else // m_debug
-	const char* vertex_src_arr[] = {header, vertex_src};
-	const char* fragment_src_arr[] = {header, fragment_src};
-	#endif // m_debug
 	glShaderSource(vertex, array_count(vertex_src_arr), (const GLchar * const *)vertex_src_arr, null);
 	glShaderSource(fragment, array_count(fragment_src_arr), (const GLchar * const *)fragment_src_arr, null);
 	glCompileShader(vertex);
-	char buffer[1024] = zero;
-	check_for_shader_errors(vertex, buffer);
+	char buffer1[1024];
+	char buffer2[1024];
+	b8 vertexok = check_for_shader_errors(vertex, buffer1);
 	glCompileShader(fragment);
-	check_for_shader_errors(fragment, buffer);
+	b8 fragok = check_for_shader_errors(fragment, buffer2);
+	if(!(vertexok&&fragok)){
+		if(!vertexok) {
+			fprintf(stderr, "vertex shader compile error:\n%s\n", buffer1);
+		}
+		if(!fragok) {
+			fprintf(stderr, "fragment shader compile error:\n%s\n", buffer2);
+		}
+		abort();
+	}
 	u32 program = glCreateProgram();
 	glAttachShader(program, vertex);
 	glAttachShader(program, fragment);
@@ -1313,7 +1320,7 @@ void gl_debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, G
 	}
 }
 
-func char* handle_plural(int num)
+func const char* handle_plural(int num)
 {
 	return (num == 1 || num == -1) ? "" : "s";
 }
@@ -1480,7 +1487,7 @@ func s_v2i point_to_tile(s_v2 pos)
 {
 	int x_index = floorfi(pos.x / (float)c_tile_size);
 	int y_index = floorfi(pos.y / (float)c_tile_size);
-	return s_v2i(x_index, y_index);
+	return {x_index, y_index};
 }
 
 func float get_dig_delay()
@@ -2093,7 +2100,6 @@ func s_v2 get_camera_wanted_center(s_player player)
 
 	if(game->camera_bounds)
 	{
-		s_bounds cam_bounds = get_camera_bounds(game->camera);
 		float right_limit = c_tiles_right * c_tile_size;
 		result.x = at_least(c_half_res.x, result.x);
 		result.x = at_most(right_limit - c_half_res.x, result.x);

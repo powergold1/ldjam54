@@ -13,6 +13,7 @@
 
 #ifndef _WIN32
 #define _declspec(x)
+#define __declspec(x)
 #endif
 
 #define array_count(arr) (sizeof((arr)) / sizeof((arr)[0]))
@@ -73,6 +74,7 @@ func char* format_text(const char* text, ...)
 
 func void on_failed_assert(const char* cond, const char* file, int line)
 {
+#ifdef _WIN32
 	char* text = format_text("FAILED ASSERT IN %s (%i)\n%s\n", file, line, cond);
 	printf("%s\n", text);
 	int result = MessageBox(null, text, "Assertion failed", MB_RETRYCANCEL | MB_TOPMOST);
@@ -87,6 +89,11 @@ func void on_failed_assert(const char* cond, const char* file, int line)
 			exit(1);
 		}
 	}
+#endif
+#ifdef __linux__
+	fprintf(stderr, "FAILED ASSERT IN %s:%i\n%s\n", file, line, cond);
+	abort();
+#endif
 }
 
 
@@ -287,27 +294,27 @@ func int circular_index(int index, int size)
 [[nodiscard]]
 func s_v4 rgb(float r, float g, float b)
 {
-	return v4(r, g, b, 1);
+	return {r, g, b, 1};
 }
 
 [[nodiscard]]
 func constexpr s_v4 rgb(int hex)
 {
-	s_v4 result;
-	result.x = ((hex & 0xFF0000) >> 16) / 255.0f;
-	result.y = ((hex & 0x00FF00) >> 8) / 255.0f;
-	result.z = ((hex & 0x0000FF)) / 255.0f;
-	result.w = 1;
-	return result;
+	return {
+		((hex & 0xFF0000) >> 16) / 255.0f,
+		((hex & 0x00FF00) >> 8) / 255.0f,
+		((hex & 0x0000FF)) / 255.0f,
+		1
+	};
 }
 
 [[nodiscard]]
 func constexpr s_v4 rgba(int hex)
 {
-	s_v4 result;
-	result.x = ((hex & 0xFF000000) >> 24) / 255.0f;
-	result.y = ((hex & 0x00FF0000) >> 16) / 255.0f;
-	result.z = ((hex & 0x0000FF00) >> 8) / 255.0f;
-	result.w = ((hex & 0x000000FF) >> 0) / 255.0f;
-	return result;
+	return {
+		((hex & 0xFF000000) >> 24) / 255.0f,
+		((hex & 0x00FF0000) >> 16) / 255.0f,
+		((hex & 0x0000FF00) >> 8) / 255.0f,
+		((hex & 0x000000FF) >> 0) / 255.0f
+	};
 }

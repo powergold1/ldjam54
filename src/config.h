@@ -36,7 +36,7 @@ global constexpr s_v2i c_resolutions[] = {
 };
 
 global constexpr float c_gravity = 1500;
-global constexpr s_v2 c_player_size = v2(32 * 0.8f, 64 * 0.8f);
+global constexpr s_v2 c_player_size = {32 * 0.8f, 64 * 0.8f};
 global constexpr int c_tile_size = 64;
 global constexpr int c_atlas_size = 256;
 global constexpr int c_tiles_right = 64;

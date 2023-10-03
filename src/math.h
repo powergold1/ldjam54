@@ -7,12 +7,17 @@ struct s_v2
 {
 	float x;
 	float y;
+	//constexpr s_v2(float x, float y) : x(x), y(y) {}
+	//constexpr s_v2(int x, int y) : x((float)x), y((float)y) {}
+	//constexpr s_v2(float f) : x((float)f), y((float)f) {}
+	//constexpr s_v2(int i) : x((float)i), y((float)i) {}
 };
 
 struct s_v2i
 {
 	int x;
 	int y;
+	//constexpr s_v2i(int x, int y) : x(x), y(y) {}
 };
 
 struct s_v3
@@ -20,6 +25,8 @@ struct s_v3
 	float x;
 	float y;
 	float z;
+	//constexpr s_v3(float x, float y, float z) : x(x), y(y), z(z) {}
+	//constexpr s_v3(float f) : x(f), y(f), z(f) {}
 };
 
 struct s_v4
@@ -28,153 +35,93 @@ struct s_v4
 	float y;
 	float z;
 	float w;
+	//constexpr s_v4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+	//constexpr s_v4(float f) : x(f), y(f), z(f), w(f) {}
+	//constexpr s_v4(s_v3 v, float w) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
-template <typename T>
-func constexpr s_v2 v2(T x, T y)
+func constexpr s_v2 v2(float a, float b)
 {
-	s_v2 result;
-	result.x = (float)x;
-	result.y = (float)y;
-	return result;
+	return {a, b};
 }
 
-template <typename T>
-func constexpr s_v2 v2(T v)
+func constexpr s_v2 v2(float v)
 {
-	s_v2 result;
-	result.x = (float)v;
-	result.y = (float)v;
-	return result;
+	return {v, v};
 }
 
 func constexpr s_v2 v2(s_v2i v)
 {
-	return v2(v.x, v.y);
+	return {.x=(float)v.x, .y=(float)v.y};
 }
 
 func s_v2 v22i(int x, int y)
 {
-	s_v2 result;
-	result.x = (float)x;
-	result.y = (float)y;
-	return result;
+	return {.x=(float)x, .y=(float)y};
 }
 
 func constexpr s_v2i v2i(int x, int y)
 {
-	s_v2i result;
-	result.x = x;
-	result.y = y;
-	return result;
+	return {.x=x, .y=y};
 }
 
 func s_v2 v2ii(int x, int y)
 {
-	s_v2 result;
-	result.x = (float)x;
-	result.y = (float)y;
-	return result;
+	return {.x=(float)x, .y=(float)y};
 }
 
 func s_v2 v2_mul(s_v2 a, float b)
 {
-	s_v2 result;
-	result.x = a.x * b;
-	result.y = a.y * b;
-	return result;
+	return {a.x * b, a.y * b};
 }
 
 func s_v3 v3(float x, float y, float z)
 {
-	s_v3 result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	return result;
+	return {x, y, z};
 }
 
 func s_v3 v3_mul(s_v3 a, float b)
 {
-	s_v3 result;
-	result.x = a.x * b;
-	result.y = a.y * b;
-	result.z = a.z * b;
-	return result;
+	return {a.x * b, a.y * b, a.z * b};
 }
 
 func s_v4 v4(float x, float y, float z, float w)
 {
-	s_v4 result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	result.w = w;
-	return result;
+	return {x, y, z, w};
 }
 
 template <typename t0, typename t1, typename t2, typename t3>
 func s_v4 v4(t0 x, t1 y, t2 z, t3 w)
 {
-	s_v4 result;
-	result.x = (float)x;
-	result.y = (float)y;
-	result.z = (float)z;
-	result.w = (float)w;
-	return result;
+	return (s_v4){(float)x, (float)y, (float)z, (float)w};
 }
 
 template <typename t>
 func s_v4 v4(t v)
 {
-	s_v4 result;
-	result.x = (float)v;
-	result.y = (float)v;
-	result.z = (float)v;
-	result.w = (float)v;
-	return result;
+	return (s_v4){(float)v, (float)v, (float)v, (float)v};
 }
 
 template <typename t>
 func constexpr s_v4 make_color(t v)
 {
-	s_v4 result;
-	result.x = (float)v;
-	result.y = (float)v;
-	result.z = (float)v;
-	result.w = 1;
-	return result;
+	return {(float)v, (float)v, (float)v, 1};
 }
 
 template <typename t0, typename t1, typename t2>
 func constexpr s_v4 make_color(t0 r, t1 g, t2 b)
 {
-	s_v4 result;
-	result.x = (float)r;
-	result.y = (float)g;
-	result.z = (float)b;
-	result.w = 1;
-	return result;
+	return {(float)r, (float)g, (float)b, 1};
 }
 
 func s_v4 v41f(float v)
 {
-	s_v4 result;
-	result.x = v;
-	result.y = v;
-	result.z = v;
-	result.w = v;
-	return result;
+	return {v, v, v, v};
 }
 
 func s_v4 v4(s_v3 v, float w)
 {
-	s_v4 result;
-	result.x = v.x;
-	result.y = v.y;
-	result.z = v.z;
-	result.w = w;
-	return result;
+	return {v.x, v.y, v.z, w};
 }
 
 func b8 rect_collides_circle(s_v2 rect_center, s_v2 rect_size, s_v2 center, float radius)
@@ -200,18 +147,15 @@ func b8 rect_collides_circle(s_v2 rect_center, s_v2 rect_size, s_v2 center, floa
 
 func s_v2 v2_from_angle(float angle)
 {
-	return v2(
+	return {
 		cosf(angle),
 		sinf(angle)
-	);
+	};
 }
 
 func s_v2 v2_sub(s_v2 a, s_v2 b)
 {
-	s_v2 result;
-	result.x = a.x - b.x;
-	result.y = a.y - b.y;
-	return result;
+	return {a.x - b.x, a.y - b.y};
 }
 
 func float v2_angle(s_v2 v)
@@ -285,42 +229,27 @@ func float fract(float x)
 
 func s_v2 operator-(s_v2 a, s_v2 b)
 {
-	s_v2 result;
-	result.x = a.x - b.x;
-	result.y = a.y - b.y;
-	return result;
+	return {a.x - b.x, a.y - b.y};
 }
 
 func s_v2 operator+(s_v2 a, s_v2 b)
 {
-	s_v2 result;
-	result.x = a.x + b.x;
-	result.y = a.y + b.y;
-	return result;
+	return {a.x + b.x, a.y + b.y};
 }
 
 func s_v2 operator*(s_v2 a, float b)
 {
-	s_v2 result;
-	result.x = a.x * b;
-	result.y = a.y * b;
-	return result;
+	return {a.x * b, a.y * b};
 }
 
 func s_v2 operator/(s_v2 a, float b)
 {
-	s_v2 result;
-	result.x = a.x / b;
-	result.y = a.y / b;
-	return result;
+	return {a.x / b, a.y / b};
 }
 
 func s_v2 operator/(s_v2 a, s_v2 b)
 {
-	s_v2 result;
-	result.x = a.x / b.x;
-	result.y = a.y / b.y;
-	return result;
+	return {a.x / b.x, a.y / b.y};
 }
 
 func void operator-=(s_v2& a, s_v2 b)
@@ -355,49 +284,29 @@ func float v2_distance(s_v2 a, s_v2 b)
 
 func s_v2 lerp(s_v2 a, s_v2 b, float t)
 {
-	s_v2 result;
-	result.x = lerp(a.x, b.x, t);
-	result.y = lerp(a.y, b.y, t);
-	return result;
+	return {lerp(a.x, b.x, t), lerp(a.y, b.y, t)};
 }
 
 func s_v2 lerp_snap(s_v2 a, s_v2 b, float t)
 {
-	s_v2 result;
 	float dist = v2_distance(a, b);
-	if(dist < 1.0f)
-	{
-		t = 1;
-	}
-	result.x = lerp(a.x, b.x, t);
-	result.y = lerp(a.y, b.y, t);
-	return result;
+	return lerp(a, b, dist < 1.0f ? 1.0f : t);
 }
 
 func s_v4 lerp(s_v4 a, s_v4 b, float t)
 {
-	s_v4 result;
-	result.x = lerp(a.x, b.x, t);
-	result.y = lerp(a.y, b.y, t);
-	result.z = lerp(a.z, b.z, t);
-	result.w = lerp(a.w, b.w, t);
-	return result;
+	return {
+		lerp(a.x, b.x, t),
+		lerp(a.y, b.y, t),
+		lerp(a.z, b.z, t),
+		lerp(a.w, b.w, t)
+	};
 }
 
 func s_v2 v2_normalized(s_v2 v)
 {
-	s_v2 result;
 	float length = v2_length(v);
-	if(length != 0)
-	{
-		result.x = v.x / length;
-		result.y = v.y / length;
-	}
-	else
-	{
-		result = v;
-	}
-	return result;
+	return length == 0 ? v : (s_v2){v.x / length, v.y / length};
 }
 
 func float range_lerp(float input_val, float input_start, float input_end, float output_start, float output_end)
@@ -407,10 +316,7 @@ func float range_lerp(float input_val, float input_start, float input_end, float
 
 func s_v2 operator*(s_v2 left, s_v2 right)
 {
-	s_v2 result;
-	result.x = left.x * right.x;
-	result.y = left.y * right.y;
-	return result;
+	return {left.x * right.x, left.y * right.y};
 }
 
 func void operator+=(s_v2& left, s_v2 right)
@@ -433,69 +339,33 @@ func b8 circle_collides_circle(s_v2 center1, float radius1, s_v2 center2, float 
 	return false;
 }
 
-func s_v3 hsv_to_rgb(s_v3 colour)
+func s_v3 hsv_to_rgb(s_v3 color)
 {
-	s_v3 rgb;
-
-	if(colour.y <= 0.0f)
+	if(color.y <= 0.0f)
 	{
-		rgb.x = colour.z;
-		rgb.y = colour.z;
-		rgb.z = colour.z;
-		return rgb;
+		return {color.z, color.z, color.z};
 	}
 
-	colour.x *= 360.0f;
-	if(colour.x < 0.0f || colour.x >= 360.0f)
-		colour.x = 0.0f;
-	colour.x /= 60.0f;
+	color.x *= 360.0f;
+	if(color.x < 0.0f || color.x >= 360.0f)
+		color.x = 0.0f;
+	color.x /= 60.0f;
 
-	u32 i = (u32)colour.x;
-	float ff = colour.x - i;
-	float p = colour.z * (1.0f - colour.y );
-	float q = colour.z * (1.0f - (colour.y * ff));
-	float t = colour.z * (1.0f - (colour.y * (1.0f - ff)));
+	u32 i = (u32)color.x;
+	float ff = color.x - i;
+	float p = color.z * (1.0f - color.y );
+	float q = color.z * (1.0f - (color.y * ff));
+	float t = color.z * (1.0f - (color.y * (1.0f - ff)));
 
 	switch(i)
 	{
-	case 0:
-		rgb.x = colour.z;
-		rgb.y = t;
-		rgb.z = p;
-		break;
-
-	case 1:
-		rgb.x = q;
-		rgb.y = colour.z;
-		rgb.z = p;
-		break;
-
-	case 2:
-		rgb.x = p;
-		rgb.y = colour.z;
-		rgb.z = t;
-		break;
-
-	case 3:
-		rgb.x = p;
-		rgb.y = q;
-		rgb.z = colour.z;
-		break;
-
-	case 4:
-		rgb.x = t;
-		rgb.y = p;
-		rgb.z = colour.z;
-		break;
-
-	default:
-		rgb.x = colour.z;
-		rgb.y = p;
-		rgb.z = q;
-		break;
+	case 0: return {color.z, t, p};
+	case 1: return {q, color.z, p};
+	case 2: return {p, color.z, t};
+	case 3: return {p, q, color.z};
+	case 4: return {t, p, color.z};
+	default: return {color.z, p, q};
 	}
-
-	return rgb;
 }
 
 template <typename t>
@@ -533,8 +403,8 @@ func b8 operator==(s_v2i a, s_v2i b)
 [[nodiscard]]
 func s_v2 random_point_in_rect_topleft(s_v2 pos, s_v2 size, s_rng* rng)
 {
-	return v2(
+	return {
 		pos.x + rng->randf32() * size.x,
 		pos.y + rng->randf32() * size.y
-	);
+	};
 }
